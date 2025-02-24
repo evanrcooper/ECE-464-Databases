@@ -1,0 +1,30 @@
+Fetch Articles (For Database Initialization):
+-- Arxic
+-- -- https://arxiv.org/
+-- -- https://info.arxiv.org/help/oa/index.html
+-- PLOS
+-- -- https://plos.org/
+-- CORE
+-- -- https://core.ac.uk/
+-- NewsAPI
+-- -- https://newsapi.org/
+
+Summarize Texts:
+-- gensim
+-- -- https://radimrehurek.com/gensim/
+-- -- https://radimrehurek.com/gensim_3.8.3/auto_examples/tutorials/run_summarization.html
+-- gpt-2
+-- -- https://huggingface.co/openai-community/gpt2
+-- -- https://github.com/openai/gpt-2
+-- deepseek-r1
+-- -- https://ollama.com/search?q=deepseek
+-- sumy
+-- -- https://github.com/miso-belica/sumy
+
+Vectorize Texts:
+-- gensim-doc2vec
+-- -- https://radimrehurek.com/gensim/models/doc2vec.html
+
+WebAPI:
+-- flask
+-- -- https://flask.palletsprojects.com/en/stable/tutorial/
