@@ -1,12 +1,17 @@
-FROM postgres:latest
+FROM python:3.10-slim
 
-RUN apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-ENV POSTGRES_USER=postgres
-ENV POSTGRES_PASSWORD=password
-ENV POSTGRES_DB=evanrdb
+WORKDIR /app
 
-COPY init-db.sh /docker-entrypoint-initdb.d/init-db.sh
-RUN chmod +x /docker-entrypoint-initdb.d/init-db.sh
+RUN apt-get update && apt-get upgrade -y
 
-EXPOSE 80
+COPY ./WebApp/ /app/
+
+RUN pip3 install --upgrade pip
+RUN pip3 install -r requirements.txt
+
+EXPOSE 5000
+
+CMD ["python3", "/app/WebApp/main.py"]

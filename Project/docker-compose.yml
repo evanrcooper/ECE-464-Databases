@@ -1,16 +1,10 @@
-version: '3.8'
-
 services:
-  postgres:
+  web:
     build: .
-    container_name: evanr_postgres
-    restart: unless-stopped
     ports:
-      - "9000:9000"
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: evanr
-      POSTGRES_PASSWORD: evanrpassword
-      POSTGRES_DB: evanrdb
+      - "5000:5000"
     volumes:
-      - /evanr-db/srv:/var/lib/postgresql/data
+      - .:/app
+      - /evanr/:/evanr/
+    environment:
+      - FLASK_ENV=development

@@ -1,7 +1,6 @@
-docker rm evanr_postgres || true
+sudo mkdir -p /evanr
+sudo touch /evanr/database.sqlite3
+sudo chmod 777 /evanr/database.sqlite3
 
-docker compose build
-
-docker compose up -d
-
-docker exec -it evanr_postgres psql -U evanr -d evanrdb
+docker-compose build --no-cache
+docker-compose up --force-recreate
