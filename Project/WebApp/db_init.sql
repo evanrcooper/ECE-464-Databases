@@ -2,9 +2,26 @@
 CREATE TABLE IF NOT EXISTS users (
 	uuid /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
 	username TEXT NOT NULL,
-	display_name TEXT NOT NULL,
 	encrypted_passkey TEXT NOT NULL,
+    creation_timestamp DATETIME NULL,
 	active BOOLEAN NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS user_actions (
+    action_id INTEGER NOT NULL PRIMARY KEY,
+    action_name TEXT NOT NULL UNIQUE
+);
+
+INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (1, 'CREATE');
+INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (2, 'DEACTIVATE');
+INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (3, 'LOGIN');
+INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (4, 'LOGOFF');
+
+CREATE TABLE IF NOT EXISTS user_logs(
+    log_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
+    uuid INTEGER NOT NULL REFERENCES users(uuid),
+    log_action_id INTEGER NOT NULL REFERENCES user_actions(action_id),
+    timestamp DATETIME NOT NULL
 );
 
 -- only usernames for active accounts require uniqueness
@@ -71,6 +88,6 @@ CREATE TABLE IF NOT EXISTS article_genres (
 -- /evanr/
 -- -- database.sqlite3
 -- -- articles/
--- -- -- article_id.txt
+-- -- -- <article_id>.txt
 -- -- summaries/
--- -- -- article_id_sum.txt
+-- -- -- <article_id>_sum.txt
