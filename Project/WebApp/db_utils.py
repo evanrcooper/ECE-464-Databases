@@ -4,6 +4,7 @@ import sys
 import time
 import datetime
 import string
+import pickle
 
 # Two Way Dict
 class TokenDict:
@@ -118,6 +119,12 @@ class DBManager:
             self.conn.close()
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
+            
+    def serialize_vector(vector: np.ndarray) -> bytes:
+        return pickle.dumps(vector)
+
+    def deserialize_vector(data: bytes) -> np.ndarray:
+        return pickle.loads(data)
         
     def log_user_action(self, user_id: int, action_id: int) -> bool:
         try:
