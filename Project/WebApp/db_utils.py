@@ -91,6 +91,7 @@ class DBManager:
     # on failure will retry every retry_delay_seconds seconds 
     # and up to connection_retries times until success or raised error 
     def __init__(self, db_path: str, connection_retries: int = 4, retry_delay_seconds: float | int = 5.0) -> None:
+        self.HEXCHARS = set('0123456789ABCDEFabcdef')
         for i in range(connection_retries):
             if i != 0:
                 sys.stderr.write('Retrying connection...\n')
@@ -120,9 +121,27 @@ class DBManager:
         except Exception as e:
             sys.stderr.write(e)
             sys.stderr.write(f'Unable to log user action with {user_id=} and {action_id=} at {datetime.datetime.now()}.\n')
-            return False
+        return False
     
     def create_user(self, username: str, encrypted_password: str) -> tuple[bool, str | None]:
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f'SELECT COUNT(*) AS cnt FROM users WHERE username = \'{username}\' AND active = 1;'
+        )
+        username_match_count: int | None = cursor.fetchone()
+        if not username_match_count:
+            return (False, 'User Creation Error')
+        elif username_match_count > 0:
+            return (False, 'Username Already Exists')
+        if not all(
+            len(encrypted_password) < 8,
+            len(encrypted_password) > 32,
+            all([i in self.HEXCHARS for i in encrypted_password]),
+        ):
+            return (False, 'Password Error')
+        # insert new user into database
+        # log user action
+        # return true on success
         pass
     
     def deactivate_user(self, token: str, encrypted_password: str) -> tuple[bool, str | None]:
