@@ -5,13 +5,16 @@ import pathlib as pl
 import db_utils as db
 import db_init
 
-database_path: str = '/evanr/ece464.sqlite3'
-database_init_path: str = '/app/db_init.sql'
+# database_path: str = '/evanr/ece464.sqlite3'
+# database_init_path: str = '/app/db_init.sql'
+
+database_path: str = './ece464.sqlite3'
+database_init_path: str = './db_init.sql'
 
 def main() -> None:
     if not os.path.exists(database_path):
         if not db_init.db_init(database_path, database_init_path):
-            raise Exception('Unable to initialize database')
+            raise Exception('Unable to initialize database\n')
     db_manager: db.DBManager = db.DBManager(database_path)
 
 if __name__ == '__main__':

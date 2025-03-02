@@ -117,7 +117,7 @@ class DBManager:
             self.conn.commit()
             self.conn.close()
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
         
     def log_user_action(self, user_id: int, action_id: int) -> bool:
         try:

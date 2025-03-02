@@ -10,3 +10,5 @@ sudo chmod 777 /evanr/summaries
 
 docker-compose build
 docker-compose up
+
+# sudo python3 -B WebApp/main.py
