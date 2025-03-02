@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS user_actions (
 INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (1, 'CREATE');
 INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (2, 'DEACTIVATE');
 INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (3, 'LOGIN');
-INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (4, 'LOGOFF');
+INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (4, 'LOGOUT');
 
 CREATE TABLE IF NOT EXISTS user_logs(
     log_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
@@ -44,9 +44,12 @@ CREATE TABLE IF NOT EXISTS user_heuristics (
 CREATE TABLE IF NOT EXISTS article_interactions (
     uuid INTEGER NOT NULL REFERENCES users(uuid),
     article_id INTEGER NOT NULL REFERENCES articles(article_id),
-    liked BOOLEAN NOT NULL DEFAULT 0,
-    disliked BOOLEAN NOT NULL DEFAULT 0,
+    like_or_dislike INTEGER NOT NULL DEFAULT 0,
+    like_timestamp DATETIME NULL DEFAULT NULL,
     read BOOLEAN NOT NULL DEFAULT 0,
+    read_timestamp DATETIME NOT NULL,
+    CHECK (like_or_dislike >= -1), 
+    CHECK (like_or_dislike <= 1),
     PRIMARY KEY (uuid, article_id)
 );
 
