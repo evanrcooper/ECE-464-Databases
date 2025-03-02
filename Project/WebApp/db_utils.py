@@ -30,9 +30,7 @@ class TokenDict:
     # returns None if both or neither of user_id and token are provided otherwise 
     # returns True if provided arg was in dict before deletion and False if not
     def delete(self, *, user_id: int | None = None, token: str | None = None) -> bool | None:
-        if (user_id is None) and (token is None):
-            return None
-        if (token is not None) and (user_id is not None):
+        if (user_id is None) == (token is None):
             return None
         if user_id is not None:
             if not self.contains(user_id=user_id):
@@ -52,9 +50,7 @@ class TokenDict:
     # returns None if both or neither of user_id and token are provided otherwise 
     # returns True if provided arg is in dict and False if not
     def contains(self, *, user_id: int | None = None, token: str | None = None) -> bool | None:
-        if (user_id is None) and (token is None):
-            return None
-        if (token is not None) and (user_id is not None):
+        if (user_id is None) == (token is None):
             return None
         if user_id is not None:
             return user_id in self.user_to_token
@@ -93,7 +89,7 @@ class DBManager:
     # on failure will retry every retry_delay_seconds seconds 
     # and up to connection_retries times until success or raised error 
     def __init__(self, db_path: str, connection_retries: int = 4, retry_delay_seconds: float | int = 5.0) -> None:
-        self.HEXCHARS = set('0123456789ABCDEFabcdef')
+        self.HEXCHARS = set(string.hexdigits)
         self.USERNAMECHARS = set(string.ascii_letters + string.digits + '_')
         self.session_manager: SessionManager = SessionManager()
         for i in range(connection_retries):
@@ -102,7 +98,7 @@ class DBManager:
             try:
                 self.conn: sq3.Connection = sq3.connect(db_path)
             except Exception as e:
-                sys.stderr.write(str(e))
+                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
                 sys.stderr.write(f'Database connection failed (attempt {i+1}/{connection_retries}), will retry connection in {retry_delay_seconds} seconds.\n')
             else:
                 break # no error means successful connection
@@ -121,16 +117,17 @@ class DBManager:
             self.conn.commit()
             self.conn.close()
         except Exception as e:
-            sys.stderr.write(str(e))
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
         
     def log_user_action(self, user_id: int, action_id: int) -> bool:
         try:
             self.conn.execute(
-                f'INSERT INTO user_logs (uuid, log_action_id, timestamp) VALUES ({user_id}, {action_id}, datetime(\'now\'));'
+                f'INSERT INTO user_logs (user_id, log_action_id) VALUES ({user_id}, {action_id});'
             )
+            self.conn.commit()
             return True
         except Exception as e:
-            sys.stderr.write(str(e))
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to log user action with {user_id=} and {action_id=} at {datetime.datetime.now()}.\n')
         return False
     
@@ -148,11 +145,11 @@ class DBManager:
         ):
             return (False, 'Password Error')
         try:
-            cursor = self.conn.execute(
+            cursor: sq3.Cursor = self.conn.execute(
                 f'SELECT COUNT(*) AS cnt FROM users WHERE username = \'{username}\' AND active = 1;'
             )
         except Exception as e:
-            sys.stderr.write(str(e))
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to check if username is unique.\n')
             return (False, 'User Creation Error')
         username_match_count_series: int | None = cursor.fetchone()
@@ -162,14 +159,14 @@ class DBManager:
             return (False, 'Username Already Exists')
         try:
             self.conn.execute(
-                f'INERT INTO users (username, encrypted_passkey, creation_timestamp) VALUES ({username}, {encrypted_password}, datetime(\'now\'));'
+                f'INSERT INTO users (username, encrypted_passkey) VALUES ({username}, {encrypted_password});'
             )
             self.conn.commit()
             cursor.execute(
                 f'SELECT user_id FROM users WHERE username = \'{username}\' AND active = 1;'
             )
         except Exception as e:
-            sys.stderr.write(str(e))
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to create user.\n')
             return (False, 'User Creation Error')
         user_id: int | None = cursor.fetchone()
@@ -184,13 +181,13 @@ class DBManager:
         user_id: int = self.session_manager.validate_session(token)
         if user_id == -1:
             return (False, 'Invalid Session')
-        cursor = self.conn.cursor()
+        cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
                 f'SELECT COUNT(*) AS cnt FROM users WHERE user_id = {user_id} AND encrypted_password = {encrypted_password} AND active = 1;'
             )
         except Exception as e:
-            sys.stderr.write(str(e))
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to validate password.\n')
             return (False, 'User Deactivation Error')
         user_exists_series: int | None = cursor.fetchone()
@@ -205,7 +202,7 @@ class DBManager:
             )
             self.conn.commit()
         except Exception as e:
-            sys.stderr.write(str(e))
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to deactivate user.\n')
             return (False, 'User Deactivation Error')
         log_out_status = self.log_out(user_id)
@@ -216,13 +213,13 @@ class DBManager:
         return (True, '')
             
     def log_in(self, username: str, encrypted_password: str) -> tuple[bool, str | None]:
-        cursor = self.conn.cursor()
+        cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
                 f'SELECT user_id FROM users WHERE username = {username} AND encrypted_password = {encrypted_password} AND active = 1;'
             )
         except Exception as e:
-            sys.stderr.write(str(e))
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to validate username or password.\n')
             return (False, 'User Log-In Error')
         user_id_series: int | None = cursor.fetchone()

@@ -10,7 +10,7 @@ def db_init(database_path: str, database_init_path: str) -> bool:
         conn.commit()
         conn.close()
     except Exception as e:
-        sys.stderr.write(str(e))
-        sys.stderr.write('Unable to initialize databsse.\n')
+        sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+        sys.stderr.write('Unable to initialize database.\n')
         return False
     return True

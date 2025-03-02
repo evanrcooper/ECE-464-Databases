@@ -1,10 +1,13 @@
 -- main user table
+PRAGMA foreign_keys = ON;
+
 CREATE TABLE IF NOT EXISTS users (
-	uuid /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
+	user_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
 	username TEXT NOT NULL,
 	encrypted_passkey TEXT NOT NULL,
-    creation_timestamp DATETIME NULL,
-	active BOOLEAN NOT NULL DEFAULT 1
+    creation_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	active BOOLEAN NOT NULL DEFAULT 1,
+    CHECK (active in (0, 1))
 );
 
 CREATE TABLE IF NOT EXISTS user_actions (
@@ -19,9 +22,9 @@ INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (4, 'LOGOUT')
 
 CREATE TABLE IF NOT EXISTS user_logs(
     log_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
-    uuid INTEGER NOT NULL REFERENCES users(uuid),
+    user_id INTEGER NOT NULL REFERENCES users(user_id),
     log_action_id INTEGER NOT NULL REFERENCES user_actions(action_id),
-    timestamp DATETIME NOT NULL
+    log_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- only usernames for active accounts require uniqueness
@@ -31,7 +34,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_active_usernames
 
 -- contains extra information about the users
 CREATE TABLE IF NOT EXISTS user_heuristics (
-    uuid INTEGER PRIMARY KEY REFERENCES users(uuid),
+    user_id INTEGER PRIMARY KEY REFERENCES users(user_id),
     articles_read_count INTEGER NOT NULL DEFAULT 0,
     articles_liked_count INTEGER NOT NULL DEFAULT 0,
     articles_disliked_count INTEGER NOT NULL DEFAULT 0,
@@ -42,15 +45,15 @@ CREATE TABLE IF NOT EXISTS user_heuristics (
 
 -- contains entries for users reading, liking, and disliking articles
 CREATE TABLE IF NOT EXISTS article_interactions (
-    uuid INTEGER NOT NULL REFERENCES users(uuid),
+    user_id INTEGER NOT NULL REFERENCES users(user_id),
     article_id INTEGER NOT NULL REFERENCES articles(article_id),
     like_or_dislike INTEGER NOT NULL DEFAULT 0,
     like_timestamp DATETIME NULL DEFAULT NULL,
     read BOOLEAN NOT NULL DEFAULT 0,
-    read_timestamp DATETIME NOT NULL,
-    CHECK (like_or_dislike >= -1), 
-    CHECK (like_or_dislike <= 1),
-    PRIMARY KEY (uuid, article_id)
+    read_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (read in (0, 1)),
+    CHECK (like_or_dislike in (-1, 0, 1)),
+    PRIMARY KEY (user_id, article_id)
 );
 
 -- main article table
@@ -58,13 +61,14 @@ CREATE TABLE IF NOT EXISTS articles (
     article_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
     active BOOLEAN NOT NULL DEFAULT 1,
 	title TEXT NOT NULL,
-	author TEXT NULL,
+	authors_str TEXT NULL,
 	publish_date DATETIME NULL,
-	submitted_date DATETIME NOT NULL,
-	submitter_uuid INTEGER REFERENCES users(UUID),
+	submitted_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	submitter_user_id INTEGER REFERENCES users(user_id),
 	path TEXT NOT NULL,
     like_count INTEGER NOT NULL DEFAULT 0,
-    CHECK (like_count >= 0)
+    CHECK (like_count >= 0),
+    CHECK (active in (0, 1))
 );
 
 -- holds information about the articles like text summaries and vector encodings
@@ -77,8 +81,10 @@ CREATE TABLE IF NOT EXISTS article_heuristics (
 -- indexes all genres (aka keywords)
 CREATE TABLE IF NOT EXISTS genres (
     genre_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
-    genre_name TEXT NULL DEFAULT NULL
+    genre_name TEXT NOT NULL UNIQUE
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS genre_name_index ON genres (genre_name);
 
 -- contains entries for if an article is associated with a genre
 CREATE TABLE IF NOT EXISTS article_genres (
