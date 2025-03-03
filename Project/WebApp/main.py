@@ -8,7 +8,7 @@ import db_init
 # database_path: str = '/evanr/ece464.sqlite3'
 # database_init_path: str = '/app/db_init.sql'
 
-database_path: str = './ece464.sqlite3'
+database_path: str = '/evanr/ece464.sqlite3'
 database_init_path: str = './db_init.sql'
 
 def main() -> None:

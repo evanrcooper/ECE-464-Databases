@@ -43,19 +43,6 @@ CREATE TABLE IF NOT EXISTS user_heuristics (
     CHECK (articles_disliked_count >= 0)
 );
 
--- contains entries for users reading, liking, and disliking articles
-CREATE TABLE IF NOT EXISTS article_interactions (
-    user_id INTEGER NOT NULL REFERENCES users(user_id),
-    article_id INTEGER NOT NULL REFERENCES articles(article_id),
-    like_or_dislike INTEGER NOT NULL DEFAULT 0,
-    like_timestamp DATETIME NULL DEFAULT NULL,
-    read BOOLEAN NOT NULL DEFAULT 0,
-    read_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CHECK (read in (0, 1)),
-    CHECK (like_or_dislike in (-1, 0, 1)),
-    PRIMARY KEY (user_id, article_id)
-);
-
 -- main article table
 CREATE TABLE IF NOT EXISTS articles (
     article_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
@@ -69,6 +56,19 @@ CREATE TABLE IF NOT EXISTS articles (
     like_count INTEGER NOT NULL DEFAULT 0,
     CHECK (like_count >= 0),
     CHECK (active in (0, 1))
+);
+
+-- contains entries for users reading, liking, and disliking articles
+CREATE TABLE IF NOT EXISTS article_interactions (
+    user_id INTEGER NOT NULL REFERENCES users(user_id),
+    article_id INTEGER NOT NULL REFERENCES articles(article_id),
+    like_or_dislike INTEGER NOT NULL DEFAULT 0,
+    like_timestamp DATETIME NULL DEFAULT NULL,
+    read BOOLEAN NOT NULL DEFAULT 0,
+    read_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (read in (0, 1)),
+    CHECK (like_or_dislike in (-1, 0, 1)),
+    PRIMARY KEY (user_id, article_id)
 );
 
 -- holds information about the articles like text summaries and vector encodings

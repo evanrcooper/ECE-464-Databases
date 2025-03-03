@@ -5,6 +5,7 @@ import time
 import datetime
 import string
 import pickle
+import numpy as np
 
 # Two Way Dict
 class TokenDict:
