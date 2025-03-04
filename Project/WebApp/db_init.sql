@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS article_interactions (
     like_or_dislike INTEGER NOT NULL DEFAULT 0,
     like_timestamp DATETIME NULL DEFAULT NULL,
     read BOOLEAN NOT NULL DEFAULT 0,
-    read_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    read_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- most recent read
     CHECK (read in (0, 1)),
     CHECK (like_or_dislike in (-1, 0, 1)),
     PRIMARY KEY (user_id, article_id)

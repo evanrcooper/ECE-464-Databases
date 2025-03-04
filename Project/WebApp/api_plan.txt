@@ -1,16 +1,16 @@
-User Functions:
-    Create User
-    Log In
-    Log Out
-    Deactivate User
+User Functions: ✅
+    Create User ✅
+    Log In ✅
+    Log Out ✅
+    Deactivate User ✅
 
-Article Functions:
-    Create Article
-    Delete Article
-    Get Summary
+Article Functions: ❌
+    Create Article ❌
+    Delete Article ❌
+    Get Summary ❌
 
-Multi-Table Interactions:
-    Read Article
-    Like Article
-    Dislike Article
-    Get Reccomendation
+Multi-Table Interactions: ❌
+    Read Article ❌
+    Like Article ❌
+    Dislike Article ❌
+    Get Reccomendation ❌
