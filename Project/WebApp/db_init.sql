@@ -5,26 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
 	user_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
 	username TEXT NOT NULL,
 	encrypted_passkey TEXT NOT NULL,
-    creation_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	active BOOLEAN NOT NULL DEFAULT 1,
     CHECK (active in (0, 1))
-);
-
-CREATE TABLE IF NOT EXISTS user_actions (
-    action_id INTEGER NOT NULL PRIMARY KEY,
-    action_name TEXT NOT NULL UNIQUE
-);
-
-INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (1, 'CREATE');
-INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (2, 'DEACTIVATE');
-INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (3, 'LOGIN');
-INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (4, 'LOGOUT');
-
-CREATE TABLE IF NOT EXISTS user_logs(
-    log_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
-    user_id INTEGER NOT NULL REFERENCES users(user_id),
-    log_action_id INTEGER NOT NULL REFERENCES user_actions(action_id),
-    log_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- only usernames for active accounts require uniqueness
@@ -50,7 +32,6 @@ CREATE TABLE IF NOT EXISTS articles (
 	title TEXT NOT NULL,
 	authors_str TEXT NULL,
 	publish_date DATETIME NULL,
-	submitted_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	submitter_user_id INTEGER REFERENCES users(user_id),
 	path TEXT NOT NULL,
     like_count INTEGER NOT NULL DEFAULT 0,
@@ -91,6 +72,42 @@ CREATE TABLE IF NOT EXISTS article_genres (
 	article_id INTEGER NOT NULL REFERENCES articles(article_id),
 	genre_id INTEGER NOT NULL REFERENCES genres(genre_id),
 	PRIMARY KEY (article_id, genre_id)
+);
+
+-- log user actions
+CREATE TABLE IF NOT EXISTS user_actions (
+    action_id INTEGER NOT NULL PRIMARY KEY,
+    action_name TEXT NOT NULL UNIQUE
+);
+
+INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (1, 'CREATE');
+INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (2, 'DEACTIVATE');
+INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (3, 'LOGIN');
+INSERT OR IGNORE INTO user_actions (action_id, action_name) VALUES (4, 'LOGOUT');
+
+CREATE TABLE IF NOT EXISTS user_logs(
+    log_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
+    user_id INTEGER NOT NULL REFERENCES users(user_id),
+    log_action_id INTEGER NOT NULL REFERENCES user_actions(action_id),
+    log_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- log article actions
+CREATE TABLE IF NOT EXISTS article_actions (
+    action_id INTEGER NOT NULL PRIMARY KEY,
+    action_name TEXT NOT NULL UNIQUE
+);
+
+INSERT OR IGNORE INTO article_actions (action_id, action_name) VALUES (1, 'CREATE');
+INSERT OR IGNORE INTO article_actions (action_id, action_name) VALUES (2, 'DELETE');
+INSERT OR IGNORE INTO article_actions (action_id, action_name) VALUES (3, 'GENERATE_SUMMARY');
+
+CREATE TABLE IF NOT EXISTS article_logs(
+    log_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
+    article_id INTEGER NOT NULL REFERENCES articles(article_id),
+    user_id INTEGER NOT NULL REFERENCES users(user_id),
+    log_action_id INTEGER NOT NULL REFERENCES article_actions(action_id),
+    log_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- DIR STRUCTURE

@@ -1,90 +1,11 @@
 import sqlite3 as sq3
-import secrets
+from session_manager import SessionManager
 import sys
 import time
 import datetime
 import string
 import pickle
 import numpy as np
-
-# Two Way Dict
-class TokenDict:
-    def __init__(self) -> None:
-        self.token_to_user: dict[str, int] = dict()
-        self.user_to_token: dict[str, int] = dict()
-    
-    # returns -1 if token is not in dict otherwise
-    # returns the user_id associated with the token provided
-    def get_user_id(self, token) -> int:
-        if not self.contains(token=token):
-            return -1
-        return self.token_to_user[token]
-    
-    # returns True if successfully inserted otherwise False if 
-    # user_id provided is invalid
-    def insert(self, user_id: int, token: str) -> bool:
-        if user_id < 0:
-            return False
-        self.token_to_user[token] = user_id
-        self.user_to_token[user_id] = token
-        return True
-    
-    # returns None if both or neither of user_id and token are provided otherwise 
-    # returns True if provided arg was in dict before deletion and False if not
-    def delete(self, *, user_id: int | None = None, token: str | None = None) -> bool | None:
-        if (user_id is None) == (token is None):
-            return None
-        if user_id is not None:
-            if not self.contains(user_id=user_id):
-                return False
-            token = self.user_to_token[user_id]
-            del self.user_to_token[user_id]
-            del self.token_to_user[token]
-            return True
-        if token is not None:
-            if not self.contains(user_id=user_id):
-                return False
-            user_id = self.token_to_user[token]
-            del self.token_to_user[token]
-            del self.user_to_token[user_id]
-            return True
-        
-    # returns None if both or neither of user_id and token are provided otherwise 
-    # returns True if provided arg is in dict and False if not
-    def contains(self, *, user_id: int | None = None, token: str | None = None) -> bool | None:
-        if (user_id is None) == (token is None):
-            return None
-        if user_id is not None:
-            return user_id in self.user_to_token
-        if token is not None:
-            return token in self.token_to_user
-
-class SessionManager:
-    def __init__(self) -> None:
-        self.sessions: TokenDict = TokenDict()
-        
-    def generate_token(self, n: int = 32) -> str:
-        return secrets.token_urlsafe(n)
-    
-    # returns True on success False on failure
-    def register_session(self, user_id: str) -> tuple[bool, str]:
-        token = self.generate_token()
-        return (self.sessions.insert(user_id=user_id, token=token), token)
-    
-    # returns True on success False on failure
-    def terminate_session(self, *, user_id: int | None = None, token: str | None = None) -> bool:
-        if (user_id is None) and (token is None):
-            return False
-        if (token is not None) and (user_id is not None):
-            return False
-        if user_id is not None:
-            return self.sessions.delete(user_id=user_id)
-        if token is not None:
-            return self.sessions.delete(token=token)
-    
-    # returns -1 if session is invalid otherwise returns user_id
-    def validate_session(self, token: str) -> int:
-        return self.sessions.get_user_id(token)
 
 class DBManager:
     # initializes a connection with the database
@@ -113,6 +34,11 @@ class DBManager:
             'LOGIN' : 3,
             'LOGOUT' : 4,
         }
+        self.article_actions: dict[str, int] = {
+            'CREATE' : 1,
+            'DELETE' : 2,
+            'GENERATE_SUMMARY' : 3,
+        }
     
     def __del__(self):
         try:
@@ -126,17 +52,19 @@ class DBManager:
 
     def deserialize_vector(data: bytes) -> np.ndarray:
         return pickle.loads(data)
-        
-    def log_user_action(self, user_id: int, action_id: int) -> bool:
+    
+    # USER FUNCTIONS
+
+    def log_user_action(self, user_id: int, user_action_id: int) -> bool:
         try:
             self.conn.execute(
-                f'INSERT INTO user_logs (user_id, log_action_id) VALUES ({user_id}, {action_id});'
+                f'INSERT INTO user_logs (user_id, log_action_id) VALUES ({user_id}, {user_action_id});'
             )
             self.conn.commit()
             return True
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
-            sys.stderr.write(f'Unable to log user action with {user_id=} and {action_id=} at {datetime.datetime.now()}.\n')
+            sys.stderr.write(f'Unable to log user action with {user_id=} and {user_action_id=} at {datetime.datetime.now()}.\n')
         return False
     
     def create_user(self, username: str, encrypted_password: str) -> tuple[bool, str | None]:
@@ -248,3 +176,17 @@ class DBManager:
         if not self.log_user_action(user_id, self.user_actions['LOGOUT']):
             return (False, 'User Log-Out Logging Error')
         return (True, '')
+    
+    # ARTICLE FUNCTIONS
+
+    def log_user_action(self, article_id: int, user_id: int, article_action_id: int) -> bool:
+        try:
+            self.conn.execute(
+                f'INSERT INTO article_logs (article_id, user_id, log_action_id) VALUES ({article_id}, {user_id}, {article_action_id});'
+            )
+            self.conn.commit()
+            return True
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'Unable to log article action with {article_id=}, {user_id=} and {article_action_id=} at {datetime.datetime.now()}.\n')
+        return False
