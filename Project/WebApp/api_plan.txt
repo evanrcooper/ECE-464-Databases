@@ -5,7 +5,7 @@ User Functions: ✅
     Deactivate User ✅
 
 Article Functions: ❌
-    Create Article ❌ // need to know how .txt files get transfered over html
+    Create Article ❌ // https://www.youtube.com/watch?v=GeiUTkSAJPs || text box input || find out how to make it safe for html insertion
     Delete Article ✅ // doesn't delete the file
     Get Summary ❌
 
