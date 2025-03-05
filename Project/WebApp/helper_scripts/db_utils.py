@@ -6,15 +6,18 @@ import datetime
 import string
 import pickle
 import numpy as np
+import os
+import pathlib as pl
 
 class DBManager:
     # initializes a connection with the database
     # on failure will retry every retry_delay_seconds seconds 
     # and up to connection_retries times until success or raised error 
-    def __init__(self, db_path: str, connection_retries: int = 4, retry_delay_seconds: float | int = 5.0) -> None:
+    def __init__(self, db_path: str, path_to_articles: pl.Path, connection_retries: int = 4, retry_delay_seconds: float | int = 5.0, remove_file_on_delete_article: bool = False) -> None:
         self.HEXCHARS = set(string.hexdigits)
         self.USERNAMECHARS = set(string.ascii_letters + string.digits + '_')
         self.session_manager: SessionManager = SessionManager()
+        self.path_to_articles: pl.Path = path_to_articles
         for i in range(connection_retries):
             if i != 0:
                 sys.stderr.write('Retrying connection...\n')
@@ -88,7 +91,7 @@ class DBManager:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to check if username is unique.\n')
             return (False, 'User Creation Error')
-        username_match_count_series: int | None = cursor.fetchone()
+        username_match_count_series: tuple[int] | None = cursor.fetchone()
         if not username_match_count_series:
             return (False, 'User Creation Error')
         elif username_match_count_series[0] > 0:
@@ -111,7 +114,7 @@ class DBManager:
         cursor.close()
         if not self.log_user_action(user_id[0], self.user_actions['CREATE']):
             return (False, 'User Creation Logging Error')
-        return (True, '')
+        return (True, None)
     
     def deactivate_user(self, token: str, encrypted_password: str) -> tuple[bool, str | None]:
         user_id: int = self.session_manager.validate_session(token)
@@ -126,7 +129,7 @@ class DBManager:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to validate password.\n')
             return (False, 'User Deactivation Error')
-        user_exists_series: int | None = cursor.fetchone()
+        user_exists_series: tuple[int] | None = cursor.fetchone()
         cursor.close()
         if not user_exists_series:
             return (False, 'User Creation Error')
@@ -146,7 +149,7 @@ class DBManager:
             return log_out_status
         if not self.log_user_action(user_id, self.user_actions['DEACTIVATE']):
             return (False, 'User Deactivation Logging Error')
-        return (True, '')
+        return (True, None)
             
     def log_in(self, username: str, encrypted_password: str) -> tuple[bool, str | None]:
         cursor: sq3.Cursor = self.conn.cursor()
@@ -158,7 +161,7 @@ class DBManager:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to validate username or password.\n')
             return (False, 'User Log-In Error')
-        user_id_series: int | None = cursor.fetchone()
+        user_id_series: tuple[int] | None = cursor.fetchone()
         cursor.close()
         if not user_id_series:
             return (False, 'Username or Password Error')
@@ -175,11 +178,11 @@ class DBManager:
             return (False, 'User Log-Out Error')
         if not self.log_user_action(user_id, self.user_actions['LOGOUT']):
             return (False, 'User Log-Out Logging Error')
-        return (True, '')
+        return (True, None)
     
     # ARTICLE FUNCTIONS
 
-    def log_user_action(self, article_id: int, user_id: int, article_action_id: int) -> bool:
+    def log_article_action(self, article_id: int, user_id: int, article_action_id: int) -> bool:
         try:
             self.conn.execute(
                 f'INSERT INTO article_logs (article_id, user_id, log_action_id) VALUES ({article_id}, {user_id}, {article_action_id});'
@@ -190,3 +193,40 @@ class DBManager:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
             sys.stderr.write(f'Unable to log article action with {article_id=}, {user_id=} and {article_action_id=} at {datetime.datetime.now()}.\n')
         return False
+
+    def delete_article(self, token: str, article_id: int) -> tuple[bool, str | None]:
+        user_id: int = self.session_manager.validate_session(token)
+        if user_id == -1:
+            return (False, 'Invalid Session')
+        cursor: sq3.Cursor = self.conn.cursor()
+        cursor: sq3.Cursor = self.conn.cursor()
+        try:
+            cursor.execute(
+                f'SELECT submitter_user_id FROM articles WHERE article_id = {article_id} AND active = 1;'
+            )
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'Unable to validate password.\n')
+            return (False, 'Article Deletion Error')
+        article_owner_id_series: tuple[int] | None = cursor.fetchone()
+        cursor.close()
+        if not article_owner_id_series:
+            return (False, 'Article Not Found')
+        if not int(article_owner_id_series[0]) != user_id:
+            return (False, 'Article Not Owned By User')
+        try:
+            self.conn.execute(
+                f'UPDATE articles SET active = 0 WHERE article_id = {article_id};'
+            )
+            self.conn.commit()
+            if self.remove_file_on_delete_article:
+                article_path: pl.Path = self.path_to_articles / 'articles' / f'{article_id}.txt'
+                if os.path.exists(article_path):
+                    os.remove('')
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'Unable to delete article.\n')
+            return (False, 'Article Deletion Error')
+        if not self.log_article_action(article_id, user_id, self.article_actions['DELETE']):
+            return (False, 'Article Deletion Logging Error')
+        return (True, None)

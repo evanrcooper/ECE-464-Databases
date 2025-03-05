@@ -6,7 +6,7 @@ User Functions: ✅
 
 Article Functions: ❌
     Create Article ❌ // need to know how .txt files get transfered over html
-    Delete Article ❌
+    Delete Article ✅ // doesn't delete the file
     Get Summary ❌
 
 Multi-Table Interactions: ❌
