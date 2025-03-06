@@ -1,5 +1,6 @@
 import sqlite3 as sq3
 from session_manager import SessionManager
+from text_summarizer import TextSummarizer
 import sys
 import time
 import datetime
@@ -13,11 +14,13 @@ class DBManager:
     # initializes a connection with the database
     # on failure will retry every retry_delay_seconds seconds 
     # and up to connection_retries times until success or raised error 
-    def __init__(self, db_path: str, path_to_articles: pl.Path, connection_retries: int = 4, retry_delay_seconds: float | int = 5.0, remove_file_on_delete_article: bool = False) -> None:
+    def __init__(self, db_path: str, path_to_articles: pl.Path, connection_retries: int = 4, retry_delay_seconds: float | int = 5.0, remove_file_on_delete_article: bool = False, summary_num_senteces: int = 5) -> None:
         self.HEXCHARS = set(string.hexdigits)
         self.USERNAMECHARS = set(string.ascii_letters + string.digits + '_')
         self.session_manager: SessionManager = SessionManager()
+        self.text_summarizer: TextSummarizer = TextSummarizer(summary_num_senteces)
         self.path_to_articles: pl.Path = path_to_articles
+        self.remove_file_on_delete_article: bool = remove_file_on_delete_article
         for i in range(connection_retries):
             if i != 0:
                 sys.stderr.write('Retrying connection...\n')

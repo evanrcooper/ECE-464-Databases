@@ -1,0 +1,22 @@
+import sys
+import spacy
+import pytextrank
+import spacy.cli
+
+class TextSummarizer:
+    def __init__(self, sentence_count: int = 5) -> None:
+        self.sentence_count: int = sentence_count
+        spacy.cli.download("en_core_web_sm")
+        self.nlp = spacy.load("en_core_web_sm")
+        self.nlp.add_pipe("textrank")
+
+    def get_summary(self, text: str) -> str:
+        doc: str = self.nlp(text)
+        try:
+            summary: str = ' '.join([sent.text.strip() for sent in doc._.textrank.summary(limit_sentences=self.sentence_count)])
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            return 'Unable to generate summary.'
+        if len(summary) > 0 and len(summary) < 2048:
+            return summary
+        return 'Unable to generate summary.'
