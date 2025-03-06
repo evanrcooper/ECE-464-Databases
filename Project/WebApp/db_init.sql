@@ -33,9 +33,6 @@ CREATE TABLE IF NOT EXISTS articles (
 	authors_str TEXT NULL,
 	publish_date DATETIME NULL,
 	submitter_user_id INTEGER REFERENCES users(user_id),
-	path TEXT NOT NULL,
-    like_count INTEGER NOT NULL DEFAULT 0,
-    CHECK (like_count >= 0),
     CHECK (active in (0, 1))
 );
 

@@ -1,4 +1,4 @@
-from token_dict import TokenDict
+from .token_dict import TokenDict
 import secrets
 
 class SessionManager:

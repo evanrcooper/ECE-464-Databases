@@ -1,6 +1,6 @@
 import sqlite3 as sq3
-from session_manager import SessionManager
-from text_summarizer import TextSummarizer
+from .session_manager import SessionManager
+from .text_summarizer import TextSummarizer
 import sys
 import time
 import datetime
@@ -202,7 +202,6 @@ class DBManager:
         if user_id == -1:
             return (False, 'Invalid Session')
         cursor: sq3.Cursor = self.conn.cursor()
-        cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
                 f'SELECT submitter_user_id FROM articles WHERE article_id = {article_id} AND active = 1;'
@@ -233,3 +232,73 @@ class DBManager:
         if not self.log_article_action(article_id, user_id, self.article_actions['DELETE']):
             return (False, 'Article Deletion Logging Error')
         return (True, None)
+    
+    def get_article_text(self, article_id: int) -> tuple[bool, str | None]:
+        article_path: pl.Path = self.path_to_articles / 'articles' / f'{article_id}.txt'
+        if os.path.exists(article_path):
+            try:
+                with open(article_path, 'r') as article_file:
+                    return (True, article_file.read())
+            except Exception as e:
+                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+                sys.stderr.write(f'Unable to fetch articlewith id: {article_id}.\n')
+                return (False, 'Unable to get article.')
+        else:
+            return (False, 'Article does not exist.')
+    
+    def read_article_text(self, token: str, article_id: int) -> tuple[bool, str | None]:
+        user_id: int = self.session_manager.validate_session(token)
+        if user_id == -1:
+            return (False, 'Invalid Session')
+        get_article_text_succes, article_text = self.get_article_text(article_id)
+        if not get_article_text_succes:
+            return (False, article_text)
+        cursor: sq3.Cursor = self.conn.cursor()
+        try:
+            cursor.execute(
+                f'SELECT COUNT(*) AS cnt FROM article_interactions WHERE user_id = {user_id} AND article_id = {article_id};'
+            )
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'Unable to validate read status.\n')
+            return (False, 'Unable to fetch article.')
+        article_user_interaction_series: tuple[int] | None = cursor.fetchone()
+        cursor.close()
+        if not article_user_interaction_series:
+            return (False, 'Unable to fetch article.')
+        if int(article_user_interaction_series[0]) == 0:
+            query: str = f'INSERT INTO article_interactions (user_id, article_id, read) VALUES ({user_id}, {article_id}, {1});'
+        else:
+            query: str = f'UPDATE article_interactions SET read = 1, read_timestamp = CURRENT_TIMESTAMP WHERE user_id = {user_id} AND article_id = {article_id};'
+        try:
+            self.conn.execute(query)
+            self.conn.commit()
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'Unable to set read status.\n')
+            return (False, 'Unable to fetch article.')
+        return (True, article_text)
+    
+    def get_article_summary(self, token: str, article_id: int) -> tuple[bool, str | None]:
+        user_id: int = self.session_manager.validate_session(token)
+        if user_id == -1:
+            return (False, 'Invalid Session')
+        
+        summary_path: pl.Path = self.path_to_articles / 'summaries' / f'{article_id}.txt'
+        if os.path.exists(summary_path):
+            try:
+                with open(summary_path, 'r') as summary_file:
+                    return (True, summary_file.read())
+            except Exception as e:
+                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+                sys.stderr.write(f'Unable to fetch article summary for article with id: {article_id}.\n')
+                return (False, 'Unable to get article summary.')
+        get_article_text_succes, article_text = self.get_article_text(article_id)
+        if not get_article_text_succes:
+            return (False, article_text)
+        get_summary_succes, summary_text = self.text_summarizer.get_summary(article_text)
+        if not get_summary_succes:
+            return (False, summary_text)
+        if not self.log_article_action(article_id, user_id, self.article_actions['GENERATE_SUMMARY']):
+            return (False, 'Summary Generation Logging Error')
+        return (True, summary_text)

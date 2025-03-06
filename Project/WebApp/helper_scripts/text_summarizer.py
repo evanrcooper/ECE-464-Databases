@@ -10,13 +10,13 @@ class TextSummarizer:
         self.nlp = spacy.load("en_core_web_sm")
         self.nlp.add_pipe("textrank")
 
-    def get_summary(self, text: str) -> str:
+    def get_summary(self, text: str) -> tuple[bool, str]:
         doc: str = self.nlp(text)
         try:
             summary: str = ' '.join([sent.text.strip() for sent in doc._.textrank.summary(limit_sentences=self.sentence_count)])
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
-            return 'Unable to generate summary.'
+            return (False, 'Unable to generate summary.')
         if len(summary) > 0 and len(summary) < 2048:
-            return summary
-        return 'Unable to generate summary.'
+            return (True, summary)
+        return (False, 'Unable to generate summary.')

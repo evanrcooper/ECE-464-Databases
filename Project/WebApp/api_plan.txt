@@ -6,11 +6,11 @@ User Functions: ✅
 
 Article Functions: ❌
     Create Article ❌ // https://www.youtube.com/watch?v=GeiUTkSAJPs || text box input || find out how to make it safe for html insertion
+    Get Article Text ✅
     Delete Article ✅ // doesn't delete the file
-    Get Summary ❌
+    Get Summary ✅
 
 Multi-Table Interactions: ❌
-    Read Article ❌
     Like Article ❌
     Dislike Article ❌
     Get Reccomendation ❌
