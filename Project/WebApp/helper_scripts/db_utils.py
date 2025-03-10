@@ -21,6 +21,9 @@ class DBManager:
         self.text_summarizer: TextSummarizer = TextSummarizer(summary_num_senteces)
         self.path_to_articles: pl.Path = path_to_articles
         self.remove_file_on_delete_article: bool = remove_file_on_delete_article
+        self.AUTHORCHARS = set(string.ascii_letters + string.digits + string.punctuation + string.whitespace) - {'<', '>'}
+        self.TITLECHARS = set(string.ascii_letters + string.digits + string.punctuation + string.whitespace) - {'<', '>'}
+        self.ARTICLETEXTCHARS = set(string.ascii_letters + string.digits + string.punctuation + string.whitespace) - {'<', '>'}
         for i in range(connection_retries):
             if i != 0:
                 sys.stderr.write('Retrying connection...\n')
@@ -74,17 +77,17 @@ class DBManager:
         return False
     
     def create_user(self, username: str, encrypted_password: str) -> tuple[bool, str | None]:
-        if not all(
+        if not all([
             len(username) >= 4,
             len(username) <= 16,
             all([i in self.USERNAMECHARS for i in username]),
-        ):
+        ]):
             return (False, 'Username Error') 
-        if not all(
+        if not all([
             len(encrypted_password) >= 8,
             len(encrypted_password) <= 32,
             all([i in self.HEXCHARS for i in encrypted_password]),
-        ):
+        ]):
             return (False, 'Password Error')
         try:
             cursor: sq3.Cursor = self.conn.execute(
@@ -101,7 +104,7 @@ class DBManager:
             return (False, 'Username Already Exists')
         try:
             self.conn.execute(
-                f'INSERT INTO users (username, encrypted_passkey) VALUES ({username}, {encrypted_password});'
+                f'INSERT INTO users (username, encrypted_passkey) VALUES (\'{username}\', \'{encrypted_password}\');'
             )
             self.conn.commit()
             cursor.execute(
@@ -126,7 +129,7 @@ class DBManager:
         cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
-                f'SELECT COUNT(*) AS cnt FROM users WHERE user_id = {user_id} AND encrypted_password = {encrypted_password} AND active = 1;'
+                f'SELECT COUNT(*) AS cnt FROM users WHERE user_id = {user_id} AND encrypted_password = \'{encrypted_password}\' AND active = 1;'
             )
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
@@ -158,7 +161,7 @@ class DBManager:
         cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
-                f'SELECT user_id FROM users WHERE username = {username} AND encrypted_password = {encrypted_password} AND active = 1;'
+                f'SELECT user_id FROM users WHERE username = {username} AND encrypted_password = \'{encrypted_password}\' AND active = 1;'
             )
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
@@ -302,3 +305,48 @@ class DBManager:
         if not self.log_article_action(article_id, user_id, self.article_actions['GENERATE_SUMMARY']):
             return (False, 'Summary Generation Logging Error')
         return (True, summary_text)
+    
+    def create_article(self, token: str, article_text: str, title: str, publish_date: datetime.date, authors: str) -> tuple[bool, str | None]:
+        if not (all(
+            [c in self.AUTHORCHARS for c in authors]
+        ) and all(
+            [c in self.ARTICLETEXTCHARS for c in article_text]
+        ) and all(
+            [c in self.TITLECHARS for c in title]
+        )):
+            return (False, 'Invalid inputs.')
+        user_id: int = self.session_manager.validate_session(token)
+        if user_id == -1:
+            return (False, 'Invalid Session')
+        try:
+            self.conn.execute(f'INSERT INTO articles (title, author_str, publish_day, publish_month, publish_year, submitter_user_id) VALUES (\'{title}\', \'{authors}\', {publish_date.day}, {publish_date.month}, {publish_date.year}, {user_id});')
+            self.conn.commit()
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'Unable to insert new article into database.\n')
+            return (False, 'Unable to create article.')
+        cursor: sq3.Cursor = self.conn.cursor()
+        try:
+            cursor.execute(
+                f'SELECT article_id AS cnt FROM articles WHERE user_id = {user_id} ORDER BY submitted_timestamp DESC LIMIT 1;'
+            )
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'Unable to get new article_id.\n')
+            return (False, 'Unable to find article_id.')
+        article_id_series: tuple[int] | None = cursor.fetchone()
+        cursor.close()
+        if not article_id_series:
+            return (False, 'Unable to find article_id.')
+        article_id: int = int(article_id_series[0])
+        try:
+            article_path: pl.Path = self.path_to_articles / 'articles' / f'{article_id}.txt'
+            with open(article_path, 'x') as article_file:
+                article_file.write(article_text)
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'Unable to write to file.\n')
+            return (False, 'Unable to create article.')
+        if not self.log_article_action(article_id, user_id, self.article_actions['CREATE']):
+            return (False, 'Article Creation Logging Error')
+        return (True, None)

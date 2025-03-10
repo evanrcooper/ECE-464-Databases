@@ -17,6 +17,8 @@ def main() -> None:
         if not db_init.db_init(database_path, database_init_path):
             raise Exception('Unable to initialize database\n')
     db_manager: db.DBManager = db.DBManager(database_path, database_directory_path)
+    print(db_manager.create_user('admin', 'ffff'))
+    print(db_manager.log_in)
 
 if __name__ == '__main__':
     try:

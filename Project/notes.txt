@@ -28,3 +28,11 @@ Vectorize Texts:
 WebAPI:
 -- flask
 -- -- https://flask.palletsprojects.com/en/stable/tutorial/
+
+https://www.reddit.com/r/MLQuestions/comments/1fsiqyn/comment/lplfh03/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
+"""
+I would go by metrics. Pick t5 base or even t5 small. Evaluate your metrics on the task for the model. Then try one level bigger. Small -> base or base -> large. Evaluate those metrics too.
+Once you have that number down, you’ll have an idea of how the trend is going to continue. Undoubtedly bigger models are more expressive. But for being like 1.3 to 1.4 times bigger than the next biggest model, very rarely are the metrics correspondingly 1.3 -1.4x bigger.
+On a summarization task, as measured by ROUGE L Sum, t5 small gave me 0.89 and t5 base gave me 0.93 and t5 large gave me 0.96. I stuck to the base version cuz I considered 0.04 rouge score gain worth the size.
+A bigger model is slower (at scale) for forward passes unless you have top tier GPUs. And smaller models can even run fast on CPU without any GPU help. So there’s definitely a case for picking the smallest model you can choose while maintaining a decent metric
+"""

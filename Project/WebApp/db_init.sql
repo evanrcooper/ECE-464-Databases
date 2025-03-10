@@ -31,8 +31,11 @@ CREATE TABLE IF NOT EXISTS articles (
     active BOOLEAN NOT NULL DEFAULT 1,
 	title TEXT NOT NULL,
 	authors_str TEXT NULL,
-	publish_date DATETIME NULL,
+	publish_day INTEGER NULL,
+	publish_month INTEGER NULL,
+	publish_year INTEGER NULL,
 	submitter_user_id INTEGER REFERENCES users(user_id),
+    submitted_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (active in (0, 1))
 );
 
