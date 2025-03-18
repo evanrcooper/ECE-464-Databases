@@ -15,7 +15,7 @@ class TextSummarizer:
         try:
             summary: str = ' '.join([sent.text.strip() for sent in doc._.textrank.summary(limit_sentences=self.sentence_count)])
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             return (False, 'Unable to generate summary.')
         if len(summary) > 0 and len(summary) < 2048:
             return (True, summary)

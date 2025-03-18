@@ -30,7 +30,7 @@ class DBManager:
             try:
                 self.conn: sq3.Connection = sq3.connect(db_path)
             except Exception as e:
-                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
                 sys.stderr.write(f'Database connection failed (attempt {i+1}/{connection_retries}), will retry connection in {retry_delay_seconds} seconds.\n')
             else:
                 break # no error means successful connection
@@ -72,7 +72,7 @@ class DBManager:
             self.conn.commit()
             return True
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to log user action with {user_id=} and {user_action_id=} at {datetime.datetime.now()}.\n')
         return False
     
@@ -94,7 +94,7 @@ class DBManager:
                 f'SELECT COUNT(*) AS cnt FROM users WHERE username = \'{username}\' AND active = 1;'
             )
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to check if username is unique.\n')
             return (False, 'User Creation Error')
         username_match_count_series: tuple[int] | None = cursor.fetchone()
@@ -111,7 +111,7 @@ class DBManager:
                 f'SELECT user_id FROM users WHERE username = \'{username}\' AND active = 1;'
             )
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to create user.\n')
             return (False, 'User Creation Error')
         user_id: int | None = cursor.fetchone()
@@ -132,7 +132,7 @@ class DBManager:
                 f'SELECT COUNT(*) AS cnt FROM users WHERE user_id = {user_id} AND encrypted_password = \'{encrypted_password}\' AND active = 1;'
             )
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to validate password.\n')
             return (False, 'User Deactivation Error')
         user_exists_series: tuple[int] | None = cursor.fetchone()
@@ -147,7 +147,7 @@ class DBManager:
             )
             self.conn.commit()
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to deactivate user.\n')
             return (False, 'User Deactivation Error')
         log_out_status = self.log_out(user_id)
@@ -161,10 +161,10 @@ class DBManager:
         cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
-                f'SELECT user_id FROM users WHERE username = {username} AND encrypted_password = \'{encrypted_password}\' AND active = 1;'
+                f'SELECT user_id FROM users WHERE username = \'{username}\' AND encrypted_passkey = \'{encrypted_password}\' AND active = 1;'
             )
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to validate username or password.\n')
             return (False, 'User Log-In Error')
         user_id_series: tuple[int] | None = cursor.fetchone()
@@ -196,7 +196,7 @@ class DBManager:
             self.conn.commit()
             return True
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to log article action with {article_id=}, {user_id=} and {article_action_id=} at {datetime.datetime.now()}.\n')
         return False
 
@@ -210,7 +210,7 @@ class DBManager:
                 f'SELECT submitter_user_id FROM articles WHERE article_id = {article_id} AND active = 1;'
             )
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to validate password.\n')
             return (False, 'Article Deletion Error')
         article_owner_id_series: tuple[int] | None = cursor.fetchone()
@@ -229,7 +229,7 @@ class DBManager:
                 if os.path.exists(article_path):
                     os.remove('')
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to delete article.\n')
             return (False, 'Article Deletion Error')
         if not self.log_article_action(article_id, user_id, self.article_actions['DELETE']):
@@ -243,7 +243,7 @@ class DBManager:
                 with open(article_path, 'r') as article_file:
                     return (True, article_file.read())
             except Exception as e:
-                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
                 sys.stderr.write(f'Unable to fetch articlewith id: {article_id}.\n')
                 return (False, 'Unable to get article.')
         else:
@@ -262,7 +262,7 @@ class DBManager:
                 f'SELECT COUNT(*) AS cnt FROM article_interactions WHERE user_id = {user_id} AND article_id = {article_id};'
             )
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to validate read status.\n')
             return (False, 'Unable to fetch article.')
         article_user_interaction_series: tuple[int] | None = cursor.fetchone()
@@ -277,7 +277,7 @@ class DBManager:
             self.conn.execute(query)
             self.conn.commit()
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to set read status.\n')
             return (False, 'Unable to fetch article.')
         return (True, article_text)
@@ -293,7 +293,7 @@ class DBManager:
                 with open(summary_path, 'r') as summary_file:
                     return (True, summary_file.read())
             except Exception as e:
-                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
                 sys.stderr.write(f'Unable to fetch article summary for article with id: {article_id}.\n')
                 return (False, 'Unable to get article summary.')
         get_article_text_succes, article_text = self.get_article_text(article_id)
@@ -306,32 +306,32 @@ class DBManager:
             return (False, 'Summary Generation Logging Error')
         return (True, summary_text)
     
-    def create_article(self, token: str, article_text: str, title: str, publish_date: datetime.date, authors: str) -> tuple[bool, str | None]:
-        if not (all(
-            [c in self.AUTHORCHARS for c in authors]
-        ) and all(
-            [c in self.ARTICLETEXTCHARS for c in article_text]
-        ) and all(
-            [c in self.TITLECHARS for c in title]
-        )):
-            return (False, 'Invalid inputs.')
+    def create_article(self, token: str, article_text: str, title: str, publish_date: datetime.date, authors: str) -> tuple[bool, str | int | None]:
+        # if not (all(
+        #     [c in self.AUTHORCHARS for c in authors]
+        # ) and all(
+        #     [c in self.ARTICLETEXTCHARS for c in article_text]
+        # ) and all(
+        #     [c in self.TITLECHARS for c in title]
+        # )):
+        #     return (False, 'Invalid inputs.')
         user_id: int = self.session_manager.validate_session(token)
         if user_id == -1:
             return (False, 'Invalid Session')
         try:
-            self.conn.execute(f'INSERT INTO articles (title, author_str, publish_day, publish_month, publish_year, submitter_user_id) VALUES (\'{title}\', \'{authors}\', {publish_date.day}, {publish_date.month}, {publish_date.year}, {user_id});')
+            self.conn.execute(f'INSERT INTO articles (title, authors_str, publish_day, publish_month, publish_year, submitter_user_id) VALUES (\'{title}\', \'{authors}\', {publish_date.day}, {publish_date.month}, {publish_date.year}, {user_id});')
             self.conn.commit()
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to insert new article into database.\n')
             return (False, 'Unable to create article.')
         cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
-                f'SELECT article_id AS cnt FROM articles WHERE user_id = {user_id} ORDER BY submitted_timestamp DESC LIMIT 1;'
+                f'SELECT article_id AS cnt FROM articles WHERE submitter_user_id = {user_id} ORDER BY submitted_timestamp DESC LIMIT 1;'
             )
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to get new article_id.\n')
             return (False, 'Unable to find article_id.')
         article_id_series: tuple[int] | None = cursor.fetchone()
@@ -344,9 +344,9 @@ class DBManager:
             with open(article_path, 'x') as article_file:
                 article_file.write(article_text)
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to write to file.\n')
             return (False, 'Unable to create article.')
         if not self.log_article_action(article_id, user_id, self.article_actions['CREATE']):
             return (False, 'Article Creation Logging Error')
-        return (True, None)
+        return (True, article_id)

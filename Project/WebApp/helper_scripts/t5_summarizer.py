@@ -37,7 +37,7 @@ class Summarizer:
             fixed_sentences = [s.capitalize() for s in sentences]
             summary = ' '.join(fixed_sentences)
         except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}')
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to generate summary.')
             summary = None
         if summary is None or len(summary) <= 1:

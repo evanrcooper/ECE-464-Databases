@@ -7,6 +7,8 @@ WORKDIR /app
 
 RUN apt-get update && apt-get upgrade -y
 
+RUN apt-get update && apt-get install -y git
+
 COPY ./WebApp/ /app/
 
 RUN pip3 install --upgrade pip
