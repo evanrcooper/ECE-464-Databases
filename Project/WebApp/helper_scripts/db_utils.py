@@ -180,9 +180,13 @@ class DBManager:
         return (True, token)
     
     def log_out(self, *, user_id: int | None = None, token: str | None = None) -> tuple[bool, str | None]:
+        if user_id is None:
+            uuid: int = self.session_manager.validate_session(token)
+            if uuid == -1:
+                return (False, 'Invalid Session')
         if not self.session_manager.terminate_session(user_id=user_id, token=token):
             return (False, 'User Log-Out Error')
-        if not self.log_user_action(user_id, self.user_actions['LOGOUT']):
+        if not self.log_user_action(user_id if user_id is not None else uuid, self.user_actions['LOGOUT']):
             return (False, 'User Log-Out Logging Error')
         return (True, None)
     

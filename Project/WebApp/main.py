@@ -28,7 +28,7 @@ def main() -> None:
         print(log)
         return
     else:
-        token = log
+        token = log 
         print(f'{token = }')
     
     time = str(dt.datetime.now())

@@ -22,9 +22,9 @@ class TokenDict:
     
     # returns None if both or neither of user_id and token are provided otherwise 
     # returns True if provided arg was in dict before deletion and False if not
-    def delete(self, *, user_id: int | None = None, token: str | None = None) -> bool | None:
+    def delete(self, *, user_id: int | None = None, token: str | None = None) -> bool:
         if (user_id is None) == (token is None):
-            return None
+            return False
         if user_id is not None:
             if not self.contains(user_id=user_id):
                 return False
@@ -33,7 +33,7 @@ class TokenDict:
             del self.token_to_user[token]
             return True
         if token is not None:
-            if not self.contains(user_id=user_id):
+            if not self.contains(token=token):
                 return False
             user_id = self.token_to_user[token]
             del self.token_to_user[token]
