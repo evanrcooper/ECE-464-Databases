@@ -1,6 +1,7 @@
 import sqlite3 as sq3
 from .session_manager import SessionManager
 from .text_summarizer import TextSummarizer
+# from .t5_summarizer import TextSummarizer
 import sys
 import time
 import datetime
@@ -28,7 +29,7 @@ class DBManager:
             if i != 0:
                 sys.stderr.write('Retrying connection...\n')
             try:
-                self.conn: sq3.Connection = sq3.connect(db_path)
+                self.conn: sq3.Connection = sq3.connect(db_path, check_same_thread=False)
             except Exception as e:
                 sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
                 sys.stderr.write(f'Database connection failed (attempt {i+1}/{connection_retries}), will retry connection in {retry_delay_seconds} seconds.\n')
@@ -67,7 +68,8 @@ class DBManager:
     def log_user_action(self, user_id: int, user_action_id: int) -> bool:
         try:
             self.conn.execute(
-                f'INSERT INTO user_logs (user_id, log_action_id) VALUES ({user_id}, {user_action_id});'
+                'INSERT INTO user_logs (user_id, log_action_id) VALUES (?, ?);',
+                (user_id, user_action_id,),
             )
             self.conn.commit()
             return True
@@ -91,7 +93,8 @@ class DBManager:
             return (False, 'Password Error')
         try:
             cursor: sq3.Cursor = self.conn.execute(
-                f'SELECT COUNT(*) AS cnt FROM users WHERE username = \'{username}\' AND active = 1;'
+                'SELECT COUNT(*) AS cnt FROM users WHERE username = ? AND active = 1;',
+                (username,),
             )
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
@@ -104,11 +107,13 @@ class DBManager:
             return (False, 'Username Already Exists')
         try:
             self.conn.execute(
-                f'INSERT INTO users (username, encrypted_passkey) VALUES (\'{username}\', \'{encrypted_password}\');'
+                'INSERT INTO users (username, encrypted_passkey) VALUES (?, ?);',
+                (username, encrypted_password,),
             )
             self.conn.commit()
             cursor.execute(
-                f'SELECT user_id FROM users WHERE username = \'{username}\' AND active = 1;'
+                'SELECT user_id FROM users WHERE username = ? AND active = 1;',
+                (username,),
             )
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
@@ -129,7 +134,8 @@ class DBManager:
         cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
-                f'SELECT COUNT(*) AS cnt FROM users WHERE user_id = {user_id} AND encrypted_password = \'{encrypted_password}\' AND active = 1;'
+                'SELECT COUNT(*) AS cnt FROM users WHERE user_id = ? AND encrypted_password = ? AND active = 1;',
+                (user_id, encrypted_password,),
             )
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
@@ -143,7 +149,8 @@ class DBManager:
             return (False, 'Password Error')
         try:
             self.conn.execute(
-                f'UPDATE users SET active = 0 WHERE user_id = {user_id} AND active = 1;'
+                'UPDATE users SET active = 0 WHERE user_id = ? AND active = 1;',
+                (user_id,),
             )
             self.conn.commit()
         except Exception as e:
@@ -161,7 +168,8 @@ class DBManager:
         cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
-                f'SELECT user_id FROM users WHERE username = \'{username}\' AND encrypted_passkey = \'{encrypted_password}\' AND active = 1;'
+                'SELECT user_id FROM users WHERE username = ? AND encrypted_passkey = ? AND active = 1;',
+                (username,encrypted_password,)
             )
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
@@ -195,7 +203,8 @@ class DBManager:
     def log_article_action(self, article_id: int, user_id: int, article_action_id: int) -> bool:
         try:
             self.conn.execute(
-                f'INSERT INTO article_logs (article_id, user_id, log_action_id) VALUES ({article_id}, {user_id}, {article_action_id});'
+                'INSERT INTO article_logs (article_id, user_id, log_action_id) VALUES (?, ?, ?);',
+                (article_id, user_id, article_action_id,),
             )
             self.conn.commit()
             return True
@@ -211,7 +220,8 @@ class DBManager:
         cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
-                f'SELECT submitter_user_id FROM articles WHERE article_id = {article_id} AND active = 1;'
+                'SELECT submitter_user_id FROM articles WHERE article_id = ? AND active = 1;',
+                (article_id,),
             )
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
@@ -225,7 +235,8 @@ class DBManager:
             return (False, 'Article Not Owned By User')
         try:
             self.conn.execute(
-                f'UPDATE articles SET active = 0 WHERE article_id = {article_id};'
+                'UPDATE articles SET active = 0 WHERE article_id = ?;',
+                (article_id,),
             )
             self.conn.commit()
             if self.remove_file_on_delete_article:
@@ -260,30 +271,6 @@ class DBManager:
         get_article_text_succes, article_text = self.get_article_text(article_id)
         if not get_article_text_succes:
             return (False, article_text)
-        cursor: sq3.Cursor = self.conn.cursor()
-        try:
-            cursor.execute(
-                f'SELECT COUNT(*) AS cnt FROM article_interactions WHERE user_id = {user_id} AND article_id = {article_id};'
-            )
-        except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
-            sys.stderr.write(f'Unable to validate read status.\n')
-            return (False, 'Unable to fetch article.')
-        article_user_interaction_series: tuple[int] | None = cursor.fetchone()
-        cursor.close()
-        if not article_user_interaction_series:
-            return (False, 'Unable to fetch article.')
-        if int(article_user_interaction_series[0]) == 0:
-            query: str = f'INSERT INTO article_interactions (user_id, article_id, read) VALUES ({user_id}, {article_id}, {1});'
-        else:
-            query: str = f'UPDATE article_interactions SET read = 1, read_timestamp = CURRENT_TIMESTAMP WHERE user_id = {user_id} AND article_id = {article_id};'
-        try:
-            self.conn.execute(query)
-            self.conn.commit()
-        except Exception as e:
-            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
-            sys.stderr.write(f'Unable to set read status.\n')
-            return (False, 'Unable to fetch article.')
         return (True, article_text)
     
     def get_article_summary(self, token: str, article_id: int) -> tuple[bool, str | None]:
@@ -311,19 +298,14 @@ class DBManager:
         return (True, summary_text)
     
     def create_article(self, token: str, article_text: str, title: str, publish_date: datetime.date, authors: str) -> tuple[bool, str | int | None]:
-        # if not (all(
-        #     [c in self.AUTHORCHARS for c in authors]
-        # ) and all(
-        #     [c in self.ARTICLETEXTCHARS for c in article_text]
-        # ) and all(
-        #     [c in self.TITLECHARS for c in title]
-        # )):
-        #     return (False, 'Invalid inputs.')
         user_id: int = self.session_manager.validate_session(token)
         if user_id == -1:
             return (False, 'Invalid Session')
         try:
-            self.conn.execute(f'INSERT INTO articles (title, authors_str, publish_day, publish_month, publish_year, submitter_user_id) VALUES (\'{title}\', \'{authors}\', {publish_date.day}, {publish_date.month}, {publish_date.year}, {user_id});')
+            self.conn.execute(
+                'INSERT INTO articles (title, authors_str, publish_day, publish_month, publish_year, submitter_user_id) VALUES (?, ?, ?, ?, ?, ?);',
+                (title, authors, publish_date.day, publish_date.month, publish_date.year, user_id,),
+            )
             self.conn.commit()
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
@@ -332,7 +314,8 @@ class DBManager:
         cursor: sq3.Cursor = self.conn.cursor()
         try:
             cursor.execute(
-                f'SELECT article_id AS cnt FROM articles WHERE submitter_user_id = {user_id} ORDER BY submitted_timestamp DESC LIMIT 1;'
+                'SELECT article_id AS cnt FROM articles WHERE submitter_user_id = ? ORDER BY submitted_timestamp DESC LIMIT 1;',
+                (user_id,),
             )
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
