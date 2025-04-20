@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, redirect, url_for, make_response
 from helper_scripts.db_utils import DBManager
 import helper_scripts.db_init as db_init
 import pathlib as pl
 import datetime
 import os
 import sys
+from werkzeug.security import generate_password_hash
 
 app = Flask(__name__)
 
@@ -18,17 +19,17 @@ def create_user():
     success, message = db.create_user(data['username'], data['password'])
     return jsonify({'success': success, 'message': message})
 
-@app.route('/api/login', methods=['POST'])
-def login():
-    data = request.json
-    success, token = db.log_in(data['username'], data['password'])
-    return jsonify({'success': success, 'token': token})
+# @app.route('/api/login', methods=['POST'])
+# def login():
+#     data = request.json
+#     success, token = db.log_in(data['username'], data['password'])
+#     return jsonify({'success': success, 'token': token})
 
-@app.route('/api/logout', methods=['POST'])
-def logout():
-    data = request.json
-    success, message = db.log_out(token=data['token'])
-    return jsonify({'success': success, 'message': message})
+# @app.route('/api/logout', methods=['POST'])
+# def logout():
+#     data = request.json
+#     success, message = db.log_out(token=data['token'])
+#     return jsonify({'success': success, 'message': message})
 
 @app.route('/api/create_article', methods=['POST'])
 def create_article():
@@ -62,6 +63,69 @@ def get_summary():
     success, result = db.get_article_summary(token, int(article_id))
     return jsonify({'success': success, 'result': result})
 
+# ----------------------------------------------------------------------------------------------------
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    login_error = None
+    signup_error = None
+    token = request.cookies.get('session_token')
+    if token and db.session_manager.validate_session(token) != -1:
+        return redirect(url_for('home'))
+    if request.method == 'POST':
+        form_type = request.form.get('form_type')
+        if form_type == 'login':
+            username = request.form.get('username')
+            password = request.form.get('password')
+            success, token_or_msg = db.log_in(username, password)
+            if success:
+                response = make_response(redirect(url_for('home')))
+                response.set_cookie('session_token', token_or_msg, httponly=True, samesite='Lax')
+                return response
+            else:
+                login_error = token_or_msg
+        elif form_type == 'signup':
+            username = request.form.get('new_username')
+            password = request.form.get('new_password')
+            success, msg = db.create_user(username, password)
+            if success:
+                login_success, token = db.log_in(username, password)
+                if login_success:
+                    response = make_response(redirect(url_for('home')))
+                    response.set_cookie('session_token', token, httponly=True, samesite='Lax')
+                    return response
+                else:
+                    signup_error = token
+            else:
+                signup_error = msg
+    return render_template('login.html', login_error=login_error, signup_error=signup_error)
+
+@app.route('/home')
+def home():
+    token = request.cookies.get('session_token')
+    if not token:
+        return redirect(url_for('login'))
+    user_id = db.session_manager.validate_session(token)
+    if user_id == -1:
+        return redirect(url_for('login'))
+    return render_template('home.html')
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    token = request.cookies.get('session_token')
+    if not token:
+        return redirect(url_for('login'))
+    user_id = db.session_manager.validate_session(token)
+    if user_id == -1:
+        return redirect(url_for('login'))
+    response = make_response(redirect(url_for('login')))
+    response.set_cookie('session_token', '', expires=0)
+    success, message = db.log_out(token=request.cookies.get('session_token'))
+    if success:
+        return response
+    else:
+        return redirect(url_for('login'))
+
 if __name__ == '__main__':
     try:
         if not os.path.exists(DB_PATH):
@@ -72,4 +136,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt as k:
         sys.stderr.write(f'KeyboardInterrupt: {str(k)}')
         sys.stderr.write('User Interrupt\n')
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
