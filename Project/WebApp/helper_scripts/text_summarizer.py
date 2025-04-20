@@ -10,7 +10,7 @@ class TextSummarizer:
         self.nlp = spacy.load("en_core_web_sm")
         self.nlp.add_pipe("textrank")
 
-    def get_summary(self, text: str) -> tuple[bool, str]:
+    def generate_summary(self, text: str) -> tuple[bool, str]:
         doc: str = self.nlp(text)
         try:
             summary: str = ' '.join([sent.text.strip() for sent in doc._.textrank.summary(limit_sentences=self.sentence_count)])

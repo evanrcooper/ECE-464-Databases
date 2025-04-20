@@ -303,9 +303,16 @@ class DBManager:
         get_article_text_succes, article_text = self.get_article_text(article_id)
         if not get_article_text_succes:
             return (False, article_text)
-        get_summary_succes, summary_text = self.text_summarizer.get_summary(article_text)
-        if not get_summary_succes:
+        generate_summary_success, summary_text = self.text_summarizer.generate_summary(article_text)
+        if not generate_summary_success:
             return (False, summary_text)
+        try:
+            with open(summary_path, 'x') as summary_file:
+                summary_file.write(summary_text)
+        except Exception as e:
+                sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
+                sys.stderr.write(f'Unable to fetch article summary for article with id: {article_id}.\n')
+                return (False, 'Unable to save new article summary.')
         if not self.log_article_action(article_id, user_id, self.article_actions['GENERATE_SUMMARY']):
             return (False, 'Summary Generation Logging Error')
         return (True, summary_text)

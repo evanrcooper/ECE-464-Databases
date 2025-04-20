@@ -28,7 +28,7 @@ class TextSummarizer:
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name, return_dict=True)
         self.model.to(self.device)
 
-    def get_summary(self, text: str, min_length: int = 30, max_length: int = 100) -> str:
+    def generate_summary(self, text: str, min_length: int = 30, max_length: int = 100) -> str:
         try:
             inputs = self.tokenizer.encode("sumarize: " + text, return_tensors='pt', max_length=1024, truncation=True).to(self.device)
             output = self.model.generate(inputs, min_length=min_length, max_length=max_length)
