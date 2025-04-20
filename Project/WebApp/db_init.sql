@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- main user table
 PRAGMA foreign_keys = ON;
 
@@ -39,19 +41,6 @@ CREATE TABLE IF NOT EXISTS articles (
     CHECK (active in (0, 1))
 );
 
--- contains entries for users reading, liking, and disliking articles
-CREATE TABLE IF NOT EXISTS article_interactions (
-    user_id INTEGER NOT NULL REFERENCES users(user_id),
-    article_id INTEGER NOT NULL REFERENCES articles(article_id),
-    like_or_dislike INTEGER NOT NULL DEFAULT 0,
-    like_timestamp DATETIME NULL DEFAULT NULL,
-    read BOOLEAN NOT NULL DEFAULT 0,
-    read_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- most recent read
-    CHECK (read in (0, 1)),
-    CHECK (like_or_dislike in (-1, 0, 1)),
-    PRIMARY KEY (user_id, article_id)
-);
-
 -- holds information about the articles like text summaries and vector encodings
 CREATE TABLE IF NOT EXISTS article_heuristics (
     article_id INTEGER PRIMARY KEY REFERENCES articles(article_id),
@@ -59,20 +48,33 @@ CREATE TABLE IF NOT EXISTS article_heuristics (
     vector BLOB NULL DEFAULT NULL
 );
 
--- indexes all genres (aka keywords)
-CREATE TABLE IF NOT EXISTS genres (
-    genre_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
-    genre_name TEXT NOT NULL UNIQUE
-);
+-- -- contains entries for users reading, liking, and disliking articles
+-- CREATE TABLE IF NOT EXISTS article_interactions (
+--     user_id INTEGER NOT NULL REFERENCES users(user_id),
+--     article_id INTEGER NOT NULL REFERENCES articles(article_id),
+--     like_or_dislike INTEGER NOT NULL DEFAULT 0,
+--     like_timestamp DATETIME NULL DEFAULT NULL,
+--     read BOOLEAN NOT NULL DEFAULT 0,
+--     read_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- most recent read
+--     CHECK (read in (0, 1)),
+--     CHECK (like_or_dislike in (-1, 0, 1)),
+--     PRIMARY KEY (user_id, article_id)
+-- );
 
-CREATE UNIQUE INDEX IF NOT EXISTS genre_name_index ON genres (genre_name);
+-- -- indexes all genres (aka keywords)
+-- CREATE TABLE IF NOT EXISTS genres (
+--     genre_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
+--     genre_name TEXT NOT NULL UNIQUE
+-- );
 
--- contains entries for if an article is associated with a genre
-CREATE TABLE IF NOT EXISTS article_genres (
-	article_id INTEGER NOT NULL REFERENCES articles(article_id),
-	genre_id INTEGER NOT NULL REFERENCES genres(genre_id),
-	PRIMARY KEY (article_id, genre_id)
-);
+-- CREATE UNIQUE INDEX IF NOT EXISTS genre_name_index ON genres (genre_name);
+
+-- -- contains entries for if an article is associated with a genre
+-- CREATE TABLE IF NOT EXISTS article_genres (
+-- 	article_id INTEGER NOT NULL REFERENCES articles(article_id),
+-- 	genre_id INTEGER NOT NULL REFERENCES genres(genre_id),
+-- 	PRIMARY KEY (article_id, genre_id)
+-- );
 
 -- log user actions
 CREATE TABLE IF NOT EXISTS user_actions (

@@ -23,7 +23,8 @@ class TextSummarizer:
         model_names = ['T5-small', 'T5-base', 'T5-large', 'T5-3B', 'T5-11B']
         assert model_name in model_names, f'model_name must be one of: {model_names}.'
         self.model_name = model_name
-        self.device = 'cuda' if is_gpu_sufficient(min_vram_gb=4) else 'cpu'
+        # self.device = 'cuda' if is_gpu_sufficient(min_vram_gb=4) else 'cpu'
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name, return_dict=True)
         self.model.to(self.device)

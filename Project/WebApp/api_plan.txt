@@ -4,13 +4,9 @@ User Functions: ✅
     Log Out ✅
     Deactivate User ✅
 
-Article Functions: ❌
-    Create Article ❌ // https://www.youtube.com/watch?v=GeiUTkSAJPs || text box input || find out how to make it safe for html insertion
+Article Functions: ✅
+    Create Article ✅
     Get Article Text ✅
-    Delete Article ✅ // doesn't delete the file
+    Delete Article ✅
     Get Summary ✅
-
-Multi-Table Interactions: ❌
-    Like Article ❌
-    Dislike Article ❌
-    Get Reccomendation ❌
+    Get Reccomendation ✅
