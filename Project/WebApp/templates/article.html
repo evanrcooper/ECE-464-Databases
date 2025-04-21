@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Article - {{ title }}{% endblock %}
+
+{% block content %}
+<style>
+    .article-container {
+        background: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        padding: 2rem;
+        margin-top: 1rem;
+    }
+    .summary {
+        background: #f0f7ff;
+        border-left: 5px solid #007BFF;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: 6px;
+    }
+    .meta {
+        color: #555;
+        margin-bottom: 1rem;
+    }
+    .article-text {
+        line-height: 1.6;
+        color: #333;
+        white-space: pre-wrap;
+    }
+    .actions {
+        margin-bottom: 1.5rem;
+    }
+    .actions form {
+        display: inline-block;
+        margin-right: 10px;
+    }
+    .actions button {
+        background-color: #007BFF;
+        color: white;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    .actions button:hover {
+        background-color: #0056b3;
+    }
+    .error {
+        color: red;
+        /* font-weight: bold; */
+        text-align: left;
+        margin-bottom: 1rem;
+    }
+</style>
+
+<div class="article-container">
+
+    <h2>{{ title }}</h2>
+    <div class="meta">
+        <p><strong>By:</strong> {{ authors }}</p>
+        <p><strong>Published:</strong> {{ publish_date }}</p>
+    </div>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <!-- Buttons -->
+    <div class="actions">
+        {% if show_summary and summary %}
+            <form method="POST">
+                <input type="hidden" name="action" value="hide_summary">
+                <button type="submit">Hide Summary</button>
+            </form>
+        {% else %}
+            <form method="POST">
+                <input type="hidden" name="action" value="summarize">
+                <button type="submit">Summarize Article</button>
+            </form>
+        {% endif %}
+        <form method="POST">
+            <input type="hidden" name="action" value="recommend">
+            <button type="submit">Go to Recommended Article</button>
+        </form>
+    </div>
+
+    <!-- Summary (above article text) -->
+    {% if show_summary and summary %}
+        <div class="summary">
+            <strong>Summary:</strong>
+            <p>{{ summary }}</p>
+        </div>
+    {% endif %}
+
+    <!-- Article Text -->
+    <div class="article-text">
+        {{ article_text }}
+    </div>
+</div>
+{% endblock %}

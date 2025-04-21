@@ -1,4 +1,4 @@
-CREATE EXTENSION IF NOT EXISTS vector;
+-- CREATE EXTENSION IF NOT EXISTS vector;
 
 -- main user table
 PRAGMA foreign_keys = ON;
@@ -110,6 +110,15 @@ CREATE TABLE IF NOT EXISTS article_logs(
     user_id INTEGER NOT NULL REFERENCES users(user_id),
     log_action_id INTEGER NOT NULL REFERENCES article_actions(action_id),
     log_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_reads (
+    read_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    article_id INTEGER NOT NULL,
+    read_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (article_id) REFERENCES articles(article_id)
 );
 
 -- DIR STRUCTURE

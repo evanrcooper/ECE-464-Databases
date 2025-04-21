@@ -4,7 +4,7 @@ import pytextrank
 import spacy.cli
 
 class TextSummarizer:
-    def __init__(self, sentence_count: int = 5) -> None:
+    def __init__(self, sentence_count: int = 5, model_name = None) -> None:
         self.sentence_count: int = sentence_count
         spacy.cli.download("en_core_web_sm")
         self.nlp = spacy.load("en_core_web_sm")

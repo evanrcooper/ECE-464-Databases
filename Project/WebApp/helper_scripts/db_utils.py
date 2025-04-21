@@ -1,7 +1,8 @@
 import sqlite3 as sq3
 from .session_manager import SessionManager
-from .text_summarizer import TextSummarizer
-# from .t5_summarizer import TextSummarizer
+# from .text_summarizer import TextSummarizer
+from .t5_summarizer import TextSummarizer
+from .vectorizer import ArticleVectorizer
 import sys
 import time
 import datetime
@@ -19,7 +20,7 @@ class DBManager:
         self.HEXCHARS = set(string.hexdigits)
         self.USERNAMECHARS = set(string.ascii_letters + string.digits + '_')
         self.session_manager: SessionManager = SessionManager()
-        self.text_summarizer: TextSummarizer = TextSummarizer(summary_num_senteces)
+        self.text_summarizer: TextSummarizer = TextSummarizer(sentence_count=summary_num_senteces, model_name='T5-base')
         self.path_to_articles: pl.Path = path_to_articles
         self.remove_file_on_delete_article: bool = remove_file_on_delete_article
         self.AUTHORCHARS = set(string.ascii_letters + string.digits + string.punctuation + string.whitespace) - {'<', '>'}
@@ -38,6 +39,7 @@ class DBManager:
             time.sleep(retry_delay_seconds)
         else:
             raise sq3.DatabaseError('Could not connect to database.\n')
+        self.av: ArticleVectorizer = ArticleVectorizer()
         self.user_actions: dict[str, int] = {
             'CREATE' : 1,
             'DEACTIVATE' : 2,
@@ -231,7 +233,7 @@ class DBManager:
         cursor.close()
         if not article_owner_id_series:
             return (False, 'Article Not Found')
-        if not int(article_owner_id_series[0]) != user_id:
+        if int(article_owner_id_series[0]) != user_id:
             return (False, 'Article Not Owned By User')
         try:
             self.conn.execute(
@@ -341,6 +343,86 @@ class DBManager:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             sys.stderr.write(f'Unable to write to file.\n')
             return (False, 'Unable to create article.')
+        try:
+            vector = self.av.encode(article_text, normalize_embeddings=True)
+            vector_blob = DBManager.serialize_vector(vector)
+            self.conn.execute(
+                'INSERT INTO article_heuristics (article_id, vector) VALUES (?, ?) '
+                'ON CONFLICT(article_id) DO UPDATE SET vector=excluded.vector;',
+                (article_id, vector_blob,),
+            )
+            self.conn.commit()
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
+            return (False, 'Unable to vectorize and store article.')
         if not self.log_article_action(article_id, user_id, self.article_actions['CREATE']):
             return (False, 'Article Creation Logging Error')
         return (True, article_id)
+    
+    def search_articles_by_title(self, title_substring: str, limit: int = 5) -> tuple[bool, list[tuple[int, str]] | str]:
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                'SELECT article_id, title FROM articles WHERE title LIKE ? AND active = 1 ORDER BY submitted_timestamp DESC LIMIT ?;',
+                (f'%{title_substring}%', limit,),
+            )
+            results = cursor.fetchall()
+            cursor.close()
+            if results:
+                return (True, results)
+            return (False, 'No matching articles found.')
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
+            return (False, 'Query failed.')
+    
+    def log_article_read(self, user_id: int, article_id: int) -> bool:
+        try:
+            self.conn.execute(
+                'INSERT INTO user_reads (user_id, article_id) VALUES (?, ?);',
+                (user_id, article_id,),
+            )
+            self.conn.commit()
+            return True
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
+            sys.stderr.write(f'Failed to log read for user {user_id} on article {article_id}\n')
+            return False
+        
+    def get_recommended_article(self, article_id: int, user_id: int) -> tuple[bool, int | str]:
+        try:
+            cursor = self.conn.execute(
+                'SELECT vector FROM article_heuristics WHERE article_id = ?;',
+                (article_id,),
+            )
+            row = cursor.fetchone()
+            if not row or not row[0]:
+                return (False, 'No vector for current article')
+            current_vector = DBManager.deserialize_vector(row[0])
+            cursor = self.conn.execute(
+                'SELECT article_id FROM user_reads WHERE user_id = ?;',
+                (user_id,),
+            )
+            read_ids = {row[0] for row in cursor.fetchall()}
+            read_ids.add(article_id)
+            cursor = self.conn.execute(
+                'SELECT article_id, vector FROM article_heuristics WHERE article_id NOT IN ({})'.format(
+                    ','.join(['?'] * len(read_ids))
+                ),
+                tuple(read_ids),
+            )
+            best_score = -1
+            best_id = None
+            for other_id, vec_blob in cursor.fetchall():
+                if not vec_blob:
+                    continue
+                other_vector = DBManager.deserialize_vector(vec_blob)
+                score = float(np.dot(current_vector, other_vector))
+                if score > best_score:
+                    best_score = score
+                    best_id = other_id
+            if best_id is None:
+                return (False, 'No unread similar article found')
+            return (True, best_id)
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
+            return (False, 'Recommendation failed')
