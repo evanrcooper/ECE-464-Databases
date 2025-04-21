@@ -365,11 +365,18 @@ class DBManager:
             return (False, 'Article Creation Logging Error')
         return (True, article_id)
     
-    def search_articles_by_title(self, title_substring: str, limit: int = 5) -> tuple[bool, list[tuple[int, str]] | str]:
+    def search_articles_by_title(self, title_substring: str, limit: int = 5) -> tuple[bool, list[tuple[int, str, str]] | str]:
         try:
             cursor = self.conn.cursor()
             cursor.execute(
-                'SELECT article_id, title FROM articles WHERE title LIKE ? AND active = 1 ORDER BY submitted_timestamp DESC LIMIT ?;',
+                '''
+                SELECT articles.article_id, articles.title, users.username
+                FROM articles
+                JOIN users ON users.user_id = articles.submitter_user_id
+                WHERE articles.title LIKE ? AND articles.active = 1
+                ORDER BY articles.submitted_timestamp DESC
+                LIMIT ?;
+                ''',
                 (f'%{title_substring}%', limit,),
             )
             results = cursor.fetchall()
@@ -380,6 +387,7 @@ class DBManager:
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             return (False, 'Query failed.')
+
     
     def log_article_read(self, user_id: int, article_id: int) -> bool:
         try:
@@ -435,7 +443,26 @@ class DBManager:
     
     def get_most_recent_articles(self, limit=3):
         cursor = self.conn.execute(
-            'SELECT article_id, title FROM articles WHERE active = 1 ORDER BY submitted_timestamp DESC LIMIT ?;',
+            '''
+                SELECT articles.article_id, articles.title, users.username
+                FROM articles
+                JOIN users ON users.user_id = articles.submitter_user_id
+                WHERE articles.active = 1
+                ORDER BY articles.submitted_timestamp DESC
+                LIMIT ?;
+            ''',
             (limit,),
         )
         return cursor.fetchall()
+    
+    def get_username_by_id(self, user_id: int) -> str:
+        try:
+            cursor = self.conn.execute(
+                'SELECT username FROM users WHERE user_id = ?;',
+                (user_id,)
+            )
+            row = cursor.fetchone()
+            return row[0] if row else 'Unknown'
+        except Exception as e:
+            sys.stderr.write(f'get_username_by_id error: {e}\n')
+            return 'Unknown'

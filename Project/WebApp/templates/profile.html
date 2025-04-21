@@ -71,6 +71,11 @@
 </style>
 
 <div class="profile-container">
+    {% if username %}
+        <p style="text-align: center; margin-top: -1rem; color: #555; font-style: italic;">
+            Welcome, <strong>{{ username }}</strong>!
+        </p>
+    {% endif %}
     <h2>Your Submitted Articles</h2>
 
     {% if articles %}

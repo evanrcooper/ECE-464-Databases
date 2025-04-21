@@ -97,7 +97,7 @@
         text-align: center;
     }
 </style>
-
+<h2>Welcome, {{ username }}!</h2>
 <div class="search-box">
     <h2>🔍 Search Articles</h2>
     {% if error %}
@@ -114,8 +114,11 @@
 <div class="search-results">
     <h3>🆕 Recent Articles</h3>
     <ul>
-    {% for article_id, title in recent_articles %}
-        <li><a href="{{ url_for('view_article', article_id=article_id) }}">{{ title }}</a></li>
+    {% for article_id, title, submitter in recent_articles %}
+        <li>
+            <a href="{{ url_for('view_article', article_id=article_id) }}">{{ title }}</a>
+            <span style="color: #666; font-size: 0.9em;">by {{ submitter }}</span>
+        </li>
     {% endfor %}
     </ul>
 </div>
@@ -125,8 +128,11 @@
 <div class="search-results">
     <h3>🎯 Search Results</h3>
     <ul>
-    {% for article_id, title in results %}
-        <li><a href="{{ url_for('view_article', article_id=article_id) }}">{{ title }}</a></li>
+    {% for article_id, title, submitter in results %}
+        <li>
+            <a href="{{ url_for('view_article', article_id=article_id) }}">{{ title }}</a>
+            <span style="color: #666; font-size: 0.9em;">by {{ submitter }}</span>
+        </li>
     {% endfor %}
     </ul>
 </div>

@@ -97,7 +97,10 @@ def logout():
 @app.route('/home', methods=['GET', 'POST'])
 def home():
     token = request.cookies.get('session_token')
-    if not token or db.session_manager.validate_session(token) == -1:
+    if not token:
+        return redirect(url_for('login'))
+    user_id = db.session_manager.validate_session(token)
+    if user_id == -1:
         return redirect(url_for('login'))
     results = []
     error = None
@@ -113,9 +116,7 @@ def home():
             results = result
         else:
             error = result
-
     recent_articles = db.get_most_recent_articles(3)
-
     return render_template('home.html', results=results, recent_articles=recent_articles, error=error)
 
 @app.route('/article/<int:article_id>', methods=['GET', 'POST'])
@@ -188,9 +189,12 @@ def create_article():
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     token = request.cookies.get('session_token')
+    if not token:
+        return redirect(url_for('login'))
     user_id = db.session_manager.validate_session(token)
     if not token or user_id == -1:
         return redirect(url_for('login'))
+    username = db.get_username_by_id(user_id)
     if request.method == 'POST':
         article_id = int(request.form.get('article_id'))
         success, message = db.delete_article(token, article_id)
@@ -202,7 +206,7 @@ def profile():
         (user_id,)
     )
     articles = cursor.fetchall()
-    return render_template('profile.html', articles=articles)
+    return render_template('profile.html', username=username, articles=articles)
 
 @app.route('/')
 def catch_all():
