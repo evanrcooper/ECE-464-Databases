@@ -1,7 +1,7 @@
 import sqlite3 as sq3
 from .session_manager import SessionManager
-# from .text_summarizer import TextSummarizer
-from .t5_summarizer import TextSummarizer
+from .text_summarizer import TextRanker
+from .t5_summarizer import T5Summarizer
 from .vectorizer import ArticleVectorizer
 import sys
 import time
@@ -16,11 +16,13 @@ class DBManager:
     # initializes a connection with the database
     # on failure will retry every retry_delay_seconds seconds 
     # and up to connection_retries times until success or raised error 
-    def __init__(self, db_path: str, path_to_articles: pl.Path, connection_retries: int = 4, retry_delay_seconds: float | int = 5.0, remove_file_on_delete_article: bool = False, summary_num_senteces: int = 5) -> None:
+    def __init__(self, db_path: str, path_to_articles: pl.Path, connection_retries: int = 4, retry_delay_seconds: float | int = 5.0, remove_file_on_delete_article: bool = False, summary_num_senteces: int = 12) -> None:
         self.HEXCHARS = set(string.hexdigits)
         self.USERNAMECHARS = set(string.ascii_letters + string.digits + '_')
         self.session_manager: SessionManager = SessionManager()
-        self.text_summarizer: TextSummarizer = TextSummarizer(sentence_count=summary_num_senteces, model_name='T5-base')
+        # self.text_summarizer: TextSummarizer = TextSummarizer(sentence_count=summary_num_senteces, model_name='T5-base')
+        self.tr = TextRanker(sentence_count=summary_num_senteces)
+        self.t5 = T5Summarizer(model_name='T5-small')
         self.path_to_articles: pl.Path = path_to_articles
         self.remove_file_on_delete_article: bool = remove_file_on_delete_article
         self.AUTHORCHARS = set(string.ascii_letters + string.digits + string.punctuation + string.whitespace) - {'<', '>'}
@@ -292,7 +294,11 @@ class DBManager:
         get_article_text_succes, article_text = self.get_article_text(article_id)
         if not get_article_text_succes:
             return (False, article_text)
-        generate_summary_success, summary_text = self.text_summarizer.generate_summary(article_text)
+        # ranked_text = self.tr.generate_summary(article_text)
+        # if not ranked_text[0]:
+        #     return (False, ranked_text[1])
+        # generate_summary_success, summary_text = self.t5.generate_summary(ranked_text[1])
+        generate_summary_success, summary_text = self.t5.generate_summary(article_text)
         if not generate_summary_success:
             return (False, summary_text)
         try:
@@ -426,3 +432,10 @@ class DBManager:
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
             return (False, 'Recommendation failed')
+    
+    def get_most_recent_articles(self, limit=3):
+        cursor = self.conn.execute(
+            'SELECT article_id, title FROM articles WHERE active = 1 ORDER BY submitted_timestamp DESC LIMIT ?;',
+            (limit,),
+        )
+        return cursor.fetchall()

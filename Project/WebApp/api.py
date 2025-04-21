@@ -113,7 +113,10 @@ def home():
             results = result
         else:
             error = result
-    return render_template('home.html', results=results, error=error)
+
+    recent_articles = db.get_most_recent_articles(3)
+
+    return render_template('home.html', results=results, recent_articles=recent_articles, error=error)
 
 @app.route('/article/<int:article_id>', methods=['GET', 'POST'])
 def view_article(article_id):
