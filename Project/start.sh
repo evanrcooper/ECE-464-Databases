@@ -11,4 +11,5 @@ sudo chmod 777 /evanr/articles
 sudo mkdir -p /evanr/summaries
 sudo chmod 777 /evanr/summaries
 
-docker-compose up --build
+docker-compose build --no-cache
+docker-compose up
