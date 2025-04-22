@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y git
 COPY ./WebApp/ /app
 
 RUN pip3 install --upgrade pip
+run pip install hf_xet
 RUN pip3 install -r requirements.txt
 
 EXPOSE 5000

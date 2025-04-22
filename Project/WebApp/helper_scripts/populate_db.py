@@ -54,8 +54,9 @@ print(f'Loaded {len(articles)} articles.')
 success = 0
 for i, article in enumerate(articles):
     status, text = create_article(token, article)
+    title = article['title']
     if status == 200:
-        print(f'[{i+1}] Created: {article['title'][:60]}')
+        print(f'[{i+1}] Created: {title[:60]}')
         success += 1
     else:
         print(f'[{i+1}] Failed: {status} - {text}')
