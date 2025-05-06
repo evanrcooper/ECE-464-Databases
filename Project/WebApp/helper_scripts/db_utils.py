@@ -11,6 +11,7 @@ import pickle
 import numpy as np
 import os
 import pathlib as pl
+from typing import Any
 
 class DBManager:
     # initializes a connection with the database
@@ -20,7 +21,6 @@ class DBManager:
         self.HEXCHARS = set(string.hexdigits)
         self.USERNAMECHARS = set(string.ascii_letters + string.digits + '_')
         self.session_manager: SessionManager = SessionManager()
-        # self.text_summarizer: TextSummarizer = TextSummarizer(sentence_count=summary_num_senteces, model_name='T5-base')
         self.tr = TextRanker(sentence_count=summary_num_senteces)
         self.t5 = T5Summarizer(model_name='T5-small')
         self.path_to_articles: pl.Path = path_to_articles
@@ -28,6 +28,7 @@ class DBManager:
         self.AUTHORCHARS = set(string.ascii_letters + string.digits + string.punctuation + string.whitespace) - {'<', '>'}
         self.TITLECHARS = set(string.ascii_letters + string.digits + string.punctuation + string.whitespace) - {'<', '>'}
         self.ARTICLETEXTCHARS = set(string.ascii_letters + string.digits + string.punctuation + string.whitespace) - {'<', '>'}
+        self.article_vectors: dict[int, np.ndarray] = dict()
         for i in range(connection_retries):
             if i != 0:
                 sys.stderr.write('Retrying connection...\n')
@@ -42,6 +43,7 @@ class DBManager:
         else:
             raise sq3.DatabaseError('Could not connect to database.\n')
         self.av: ArticleVectorizer = ArticleVectorizer()
+        self.load_article_vectors()
         self.user_actions: dict[str, int] = {
             'CREATE' : 1,
             'DEACTIVATE' : 2,
@@ -60,7 +62,22 @@ class DBManager:
             self.conn.close()
         except Exception as e:
             sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
-            
+
+    def load_article_vectors(self):
+        try:
+            cursor = self.conn.execute('SELECT article_id, vector FROM article_heuristics WHERE vector IS NOT NULL;')
+            for article_id, vec_blob in cursor.fetchall():
+                try:
+                    self.article_vectors[article_id] = DBManager.deserialize_vector(vec_blob)
+                except Exception as e:
+                    sys.stderr.write(f'Failed to deserialize vector for article_id {article_id}: {e}\n')
+                    return False
+            return True
+        except Exception as e:
+            sys.stderr.write(f'{e.__class__.__name__}: {str(e)}\n')
+            sys.stderr.write('Failed to load article vectors into memory.\n')
+            return False
+
     def serialize_vector(vector: np.ndarray) -> bytes:
         return pickle.dumps(vector)
 
@@ -294,11 +311,15 @@ class DBManager:
         get_article_text_succes, article_text = self.get_article_text(article_id)
         if not get_article_text_succes:
             return (False, article_text)
+        
         # ranked_text = self.tr.generate_summary(article_text)
         # if not ranked_text[0]:
         #     return (False, ranked_text[1])
         # generate_summary_success, summary_text = self.t5.generate_summary(ranked_text[1])
-        generate_summary_success, summary_text = self.t5.generate_summary(article_text)
+
+        # generate_summary_success, summary_text = self.t5.generate_summary(article_text)
+        generate_summary_success, summary_text = self.tr.generate_summary(article_text)
+
         if not generate_summary_success:
             return (False, summary_text)
         try:
@@ -351,6 +372,7 @@ class DBManager:
             return (False, 'Unable to create article.')
         try:
             vector = self.av.encode(article_text, normalize_embeddings=True)
+            self.article_vectors[article_id] = vector
             vector_blob = DBManager.serialize_vector(vector)
             self.conn.execute(
                 'INSERT INTO article_heuristics (article_id, vector) VALUES (?, ?) '
@@ -404,32 +426,20 @@ class DBManager:
         
     def get_recommended_article(self, article_id: int, user_id: int) -> tuple[bool, int | str]:
         try:
-            cursor = self.conn.execute(
-                'SELECT vector FROM article_heuristics WHERE article_id = ?;',
-                (article_id,),
-            )
-            row = cursor.fetchone()
-            if not row or not row[0]:
+            if article_id not in self.article_vectors:
                 return (False, 'No vector for current article')
-            current_vector = DBManager.deserialize_vector(row[0])
+            current_vector = self.article_vectors[article_id]
             cursor = self.conn.execute(
                 'SELECT article_id FROM user_reads WHERE user_id = ?;',
                 (user_id,),
             )
             read_ids = {row[0] for row in cursor.fetchall()}
             read_ids.add(article_id)
-            cursor = self.conn.execute(
-                'SELECT article_id, vector FROM article_heuristics WHERE article_id NOT IN ({})'.format(
-                    ','.join(['?'] * len(read_ids))
-                ),
-                tuple(read_ids),
-            )
             best_score = -1
             best_id = None
-            for other_id, vec_blob in cursor.fetchall():
-                if not vec_blob:
+            for other_id, other_vector in self.article_vectors.items():
+                if other_id in read_ids:
                     continue
-                other_vector = DBManager.deserialize_vector(vec_blob)
                 score = float(np.dot(current_vector, other_vector))
                 if score > best_score:
                     best_score = score
