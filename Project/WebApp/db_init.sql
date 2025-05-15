@@ -16,17 +16,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_active_usernames
   	ON users(username)
   	WHERE active = 1;
 
--- contains extra information about the users
-CREATE TABLE IF NOT EXISTS user_heuristics (
-    user_id INTEGER PRIMARY KEY REFERENCES users(user_id),
-    articles_read_count INTEGER NOT NULL DEFAULT 0,
-    articles_liked_count INTEGER NOT NULL DEFAULT 0,
-    articles_disliked_count INTEGER NOT NULL DEFAULT 0,
-    CHECK (articles_read_count >= 0),
-    CHECK (articles_liked_count >= 0),
-    CHECK (articles_disliked_count >= 0)
-);
-
 -- main article table
 CREATE TABLE IF NOT EXISTS articles (
     article_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
@@ -47,34 +36,6 @@ CREATE TABLE IF NOT EXISTS article_heuristics (
     summary_path TEXT NULL DEFAULT NULL,
     vector BLOB NULL DEFAULT NULL
 );
-
--- -- contains entries for users reading, liking, and disliking articles
--- CREATE TABLE IF NOT EXISTS article_interactions (
---     user_id INTEGER NOT NULL REFERENCES users(user_id),
---     article_id INTEGER NOT NULL REFERENCES articles(article_id),
---     like_or_dislike INTEGER NOT NULL DEFAULT 0,
---     like_timestamp DATETIME NULL DEFAULT NULL,
---     read BOOLEAN NOT NULL DEFAULT 0,
---     read_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- most recent read
---     CHECK (read in (0, 1)),
---     CHECK (like_or_dislike in (-1, 0, 1)),
---     PRIMARY KEY (user_id, article_id)
--- );
-
--- -- indexes all genres (aka keywords)
--- CREATE TABLE IF NOT EXISTS genres (
---     genre_id /* AUTOINCREMENT */ INTEGER PRIMARY KEY, -- https://www.sqlite.org/autoinc.html
---     genre_name TEXT NOT NULL UNIQUE
--- );
-
--- CREATE UNIQUE INDEX IF NOT EXISTS genre_name_index ON genres (genre_name);
-
--- -- contains entries for if an article is associated with a genre
--- CREATE TABLE IF NOT EXISTS article_genres (
--- 	article_id INTEGER NOT NULL REFERENCES articles(article_id),
--- 	genre_id INTEGER NOT NULL REFERENCES genres(genre_id),
--- 	PRIMARY KEY (article_id, genre_id)
--- );
 
 -- log user actions
 CREATE TABLE IF NOT EXISTS user_actions (
